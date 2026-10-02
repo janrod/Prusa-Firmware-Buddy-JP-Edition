@@ -149,7 +149,7 @@ What this means for you: the code has been tested only in the simulator on the M
 machine-made with human spot checks, not a professional or native-speaker translation. Please report anything
 wrong or unnatural in [Issues](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/issues).
 
-The changes are in two commits on top of upstream 6.10.1:
+The changes are commits on top of upstream 6.10.1:
 - `gui: Draw full-width Japanese characters` - font generation (`src/module/gui/font_data`), text layout
   (`src/common/str_utils.cpp`) and rendering (`src/guiapi`).
 - `lang: Translate Japanese with kanji` - `src/lang/po/ja/Prusa-Firmware-Buddy_ja.po`.
@@ -157,6 +157,8 @@ The changes are in two commits on top of upstream 6.10.1:
 **Building it yourself:**
 
 ```bash
+git clone https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition.git
+cd Prusa-Firmware-Buddy-JP-Edition
 python utils/build.py --preset coreone --build-type release --bootloader yes
 ```
 
