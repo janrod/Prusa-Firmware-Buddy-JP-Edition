@@ -1,0 +1,64 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Please review this pull request and provide feedback on:
+            - Code quality and best practices
+            - Potential bugs or issues
+            - Performance considerations
+            - Security concerns
+            - Test coverage
+
+            Follow the review instructions and coding conventions in .claude/CLAUDE.md and
+            doc/contributing.md: review commit by commit, and do not report whitespace or formatting.
+            Skip generated or vendored data, such as bitmap font files (*.bdf); for translation
+            files (*.po), check format specifiers and structure rather than reading every string.
+            Be constructive and helpful in your feedback.
+
+            ## Verdict: binary, never a plain comment
+
+            Every review MUST end with exactly one verdict:
+            - APPROVE when there are no blockers. Suggestions and nits are fine inside an approval.
+            - REQUEST CHANGES only for blockers: security issues, bugs, violations of the repository
+              conventions, or missing tests.
+
+            Never leave a comment-only review. GitHub keeps a reviewer's earlier "changes requested"
+            in force until that same reviewer approves, so a comment-only re-review leaves the PR
+            blocked even when nothing is wrong. On a re-review, check whether your earlier blockers
+            were resolved; if they were and nothing new blocks, APPROVE — that is what clears the block.
+
+            Post the review with your Bash tool, using exactly one of these forms (the flag comes
+            first; other forms are not permitted):
+              gh pr review --approve ${{ github.event.pull_request.number }} --body "<review>"
+              gh pr review --request-changes ${{ github.event.pull_request.number }} --body "<review>"
+
+          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          # `gh pr review` is allowed only with --approve or --request-changes, so a comment-only
+          # review (which leaves an earlier "changes requested" blocking the PR) is impossible.
+          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr review --approve:*),Bash(gh pr review --request-changes:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
