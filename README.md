@@ -43,17 +43,18 @@ Prusa純正ファームウェア 6.10.1 をベースに、漢字・ひらがな�
 ## Downloads / ダウンロード
 
 Firmware files are attached to the [releases](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/releases) of this
-repository. Pick the file for your printer:
+repository, for example `COREONE_6.10.1-jp.1.bbf`. Pick the file for your printer; `SHA256SUMS.txt`
+lists the checksums.
 
 | Printer / プリンタ | File / ファイル |
 |---|---|
-| Original Prusa MK4, MK4S, MK3.9, MK3.9S | `mk4_*.bbf` |
-| Original Prusa MK3.5, MK3.5S | `mk3.5_*.bbf` |
-| Original Prusa XL | `xl_*.bbf` |
-| Prusa CORE One | `coreone_*.bbf` |
-| Prusa CORE One L | `coreonel_*.bbf` |
-| Prusa CORE One with INDX | `coreone_indx_*.bbf` |
-| Prusa CORE One L with INDX | `coreonel_indx_*.bbf` |
+| Original Prusa MK4, MK4S, MK3.9, MK3.9S | `MK4_<version>.bbf` |
+| Original Prusa MK3.5, MK3.5S | `MK3.5_<version>.bbf` |
+| Original Prusa XL | `XL_<version>.bbf` |
+| Prusa CORE One | `COREONE_<version>.bbf` |
+| Prusa CORE One L | `COREONEL_<version>.bbf` |
+| Prusa CORE One with INDX | `COREONE_INDX_<version>.bbf` |
+| Prusa CORE One L with INDX | `COREONEL_INDX_<version>.bbf` |
 
 ## Original Prusa MINI / MINI+ is not supported / MINI・MINI+ は非対応
 
