@@ -36,6 +36,7 @@ CYRILLIC = ([0x0404, 0x0406, 0x0407] + list(range(0x0410, 0x042A)) + [0x042C] +
 WIDE_SIZE = 16
 
 
+# The text layout's is_full_width() (src/common/str_utils.cpp) has to use the same ranges
 def is_wide(ch: str):
     code = ord(ch)
     return 0x3000 <= code <= 0x9FFF or 0xFF01 <= code <= 0xFF60

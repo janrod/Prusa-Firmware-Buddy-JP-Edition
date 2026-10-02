@@ -7,12 +7,14 @@
 #include <string_view_utf8.hpp>
 
 namespace {
+/// Has to match is_wide() of the font generator (font.py), which decides what the fonts draw full-width
 bool is_full_width(unichar c) {
     return (c >= 0x3000 && c <= 0x9FFF) || (c >= 0xFF01 && c <= 0xFF60);
 }
 
 /// Japanese wraps between any two full-width characters, except before the ones that
-/// must not start a line - punctuation, small kana and the prolonged sound mark (kinsoku)
+/// must not start a line - punctuation, small kana and the prolonged sound mark (kinsoku).
+/// Only the line start is checked; a line may still end with an opening bracket.
 bool can_start_line(unichar c) {
     switch (c) {
     case 0x3001: // 、
@@ -82,8 +84,6 @@ RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uin
             split = std::nullopt;
             break;
 
-        case 0x3002: // Japanese dot
-        case 0x3001: // Japanese comma
         case ' ': // remember space position
 
             // erasing start space is not handled here
@@ -91,11 +91,12 @@ RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uin
             // If there are more whitespace characters, its clearly a choice
 
             split = Position { line.chars + 1, line.width + c_width };
-            skip_char[current_line] = (c == ' ');
+            skip_char[current_line] = true;
             [[fallthrough]];
 
         default:
-            if (is_full_width(c) && line.chars > 0 && can_start_line(c)) {
+            // A wrap at a space right before this character is kept, so that the space is skipped
+            if (is_full_width(c) && line.chars > 0 && can_start_line(c) && !(split && split->chars == line.chars)) {
                 split = line;
                 skip_char[current_line] = false;
             }
@@ -104,6 +105,14 @@ RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uin
             line.width += c_width;
 
             if (line.width > max_width) {
+                if (line.chars == 1) {
+                    // A single character wider than the whole line: wrapping would only produce
+                    // empty lines, so stop - the text does not fit
+                    overflow = true;
+                    set_current_line({});
+                    return;
+                }
+
                 if (!split || current_line == max_rows - 1) { // Do not wrap singleline texts
                     split = Position { line.chars - 1, line.width - c_width };
                     overflow = true;
@@ -125,6 +134,13 @@ RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uin
                 if (!new_line(max_rows)) {
                     return;
                 }
+            }
+
+            // Japanese comma and full stop allow a wrap after them. Only once they have a place
+            // on a line - if they overflow, they take the character before them to the next line.
+            if (c == 0x3001 || c == 0x3002) {
+                split = line;
+                skip_char[current_line] = false;
             }
         }
     }

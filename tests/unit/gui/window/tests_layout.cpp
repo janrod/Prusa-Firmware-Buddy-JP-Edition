@@ -30,6 +30,10 @@ bool Font::contains(uint32_t character) const {
     return character == ' ' || character == '!';
 }
 
+const uint8_t *Font::wide_character_bitmap(uint32_t) const {
+    return nullptr; // the test font has no full-width characters
+}
+
 } // namespace font_data
 
 // 8 bit resolution 1px per row .. 1 byte per row
@@ -488,14 +492,16 @@ TEST_CASE("RectTextLayout: input misalignment", "[layout]") {
 
 TEST_CASE("RextTextLayout: Word wrapping japanese", "[layout]") {
 
+    // Japanese wraps between any two characters, not only after a comma or full stop; a line
+    // never starts with the prolonged sound mark, a small kana, a comma or a full stop
     SECTION("Japanese comma & dot: text wrap #1") {
         StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH("ロードセルキャリ。プリンタロードセルキャリ、ードセルキャリロードセルキャリ"));
         auto layout = RectTextLayout(reader, 15, 3, is_multiline::yes);
         CHECK(layout.get_height_in_chars() == 3);
         CHECK(layout.get_width_in_chars() == 15);
-        CHECK(layout.get_line_characters(0) == 9);
-        CHECK(layout.get_line_characters(1) == 13);
-        CHECK(layout.get_line_characters(2) == 15);
+        CHECK(layout.get_line_characters(0) == 15); // ロードセルキャリ。プリンタロー
+        CHECK(layout.get_line_characters(1) == 14); // ドセルキャリ、ードセルキャリ - ロ goes along with the ー after it
+        CHECK(layout.get_line_characters(2) == 8); // ロードセルキャリ
         CHECK(layout.has_text_overflown() == false);
     }
 
@@ -504,11 +510,12 @@ TEST_CASE("RextTextLayout: Word wrapping japanese", "[layout]") {
         auto layout = RectTextLayout(reader, 10, 4, is_multiline::yes);
         CHECK(layout.get_height_in_chars() == 4);
         CHECK(layout.get_width_in_chars() == 10);
-        CHECK(layout.get_line_characters(0) == 9);
-        CHECK(layout.get_line_characters(1) == 10);
-        CHECK(layout.get_line_characters(2) == 2);
-        CHECK(layout.get_line_characters(3) == 10);
-        CHECK(layout.has_text_overflown() == true);
+        CHECK(layout.get_line_characters(0) == 9); // ロードセルキャリリ, the space is skipped
+        CHECK(layout.get_skip_char_on_line(0) == true);
+        CHECK(layout.get_line_characters(1) == 10); // リンタロードセルキャ
+        CHECK(layout.get_line_characters(2) == 9); // リ、ードセルキャリ
+        CHECK(layout.get_line_characters(3) == 3); // ローー
+        CHECK(layout.has_text_overflown() == false);
     }
 }
 
@@ -782,4 +789,115 @@ TEST_CASE("Timed dialog tests", "[window]") {
     // at the end of all sections screen must be returned to its original state
     screen.BasicCheck();
     REQUIRE(screen.GetCapturedWindow() == &screen);
+}
+
+namespace {
+/// Widths of a font with 9 px Latin characters and 16 px full-width characters
+uint8_t mixed_char_width(const void *, unichar c) {
+    return c >= 0x3000 ? 16 : 9;
+}
+constexpr CharWidth mixed_width { mixed_char_width, nullptr };
+} // namespace
+
+TEST_CASE("RectTextLayout: full-width characters", "[layout]") {
+
+    SECTION("Widths are measured in the units of char_width") {
+        StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH("AB日本"));
+        auto layout = RectTextLayout(reader, 100, 1, is_multiline::no, mixed_width);
+        REQUIRE(layout.get_height_in_chars() == 1);
+        REQUIRE(layout.get_line_characters(0) == 4);
+        REQUIRE(layout.get_line_width(0) == 9 + 9 + 16 + 16);
+        REQUIRE(layout.get_width() == 50);
+        REQUIRE(layout.has_text_overflown() == false);
+    }
+
+    SECTION("Wraps between any two full-width characters") {
+        StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH("日本語設定"));
+        auto layout = RectTextLayout(reader, 48, 3, is_multiline::yes, mixed_width);
+        REQUIRE(layout.get_height_in_chars() == 2);
+        REQUIRE(layout.get_line_characters(0) == 3); // 日本語
+        REQUIRE(layout.get_line_width(0) == 48);
+        REQUIRE(layout.get_line_characters(1) == 2); // 設定
+        REQUIRE(layout.get_line_width(1) == 32);
+        REQUIRE(layout.get_width() == 48);
+        REQUIRE(layout.get_skip_char_on_line(0) == false);
+        REQUIRE(layout.has_text_overflown() == false);
+    }
+
+    SECTION("Full stop does not start a line, it takes the character before it along") {
+        StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH("日本語。"));
+        auto layout = RectTextLayout(reader, 48, 3, is_multiline::yes, mixed_width);
+        REQUIRE(layout.get_height_in_chars() == 2);
+        REQUIRE(layout.get_line_characters(0) == 2); // 日本
+        REQUIRE(layout.get_line_width(0) == 32);
+        REQUIRE(layout.get_line_characters(1) == 2); // 語。
+        REQUIRE(layout.get_line_width(1) == 32);
+        REQUIRE(layout.has_text_overflown() == false);
+    }
+
+    SECTION("Wraps after a comma that fits") {
+        StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH("日本、語ー"));
+        auto layout = RectTextLayout(reader, 48, 3, is_multiline::yes, mixed_width);
+        REQUIRE(layout.get_height_in_chars() == 2);
+        REQUIRE(layout.get_line_characters(0) == 3); // 日本、
+        REQUIRE(layout.get_line_characters(1) == 2); // 語ー
+        REQUIRE(layout.has_text_overflown() == false);
+    }
+
+    SECTION("Small kana and the prolonged sound mark do not start a line") {
+        for (const char *text : { "日本語ョ", "日本語ー" }) {
+            StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH(text));
+            auto layout = RectTextLayout(reader, 48, 3, is_multiline::yes, mixed_width);
+            REQUIRE(layout.get_height_in_chars() == 2);
+            REQUIRE(layout.get_line_characters(0) == 2);
+            REQUIRE(layout.get_line_characters(1) == 2);
+            REQUIRE(layout.has_text_overflown() == false);
+        }
+    }
+
+    SECTION("Wraps before a full-width character after Latin text") {
+        StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH("AB 日本語"));
+        auto layout = RectTextLayout(reader, 50, 3, is_multiline::yes, mixed_width);
+        REQUIRE(layout.get_height_in_chars() == 2);
+        REQUIRE(layout.get_line_characters(0) == 4); // "AB 日"
+        REQUIRE(layout.get_line_width(0) == 9 + 9 + 9 + 16);
+        REQUIRE(layout.get_line_characters(1) == 2); // 本語
+        REQUIRE(layout.has_text_overflown() == false);
+    }
+
+    SECTION("A wrapping space is skipped in characters and in width") {
+        StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH("AAAA BBBB"));
+        auto layout = RectTextLayout(reader, 45, 3, is_multiline::yes, mixed_width);
+        REQUIRE(layout.get_height_in_chars() == 2);
+        REQUIRE(layout.get_line_characters(0) == 4);
+        REQUIRE(layout.get_line_width(0) == 36);
+        REQUIRE(layout.get_skip_char_on_line(0) == true);
+        REQUIRE(layout.get_line_characters(1) == 4);
+        REQUIRE(layout.get_line_width(1) == 36);
+    }
+
+    SECTION("Overflow on the last row") {
+        StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH("日本語設定"));
+        auto layout = RectTextLayout(reader, 48, 1, is_multiline::yes, mixed_width);
+        REQUIRE(layout.get_height_in_chars() == 1);
+        REQUIRE(layout.get_line_characters(0) == 3);
+        REQUIRE(layout.get_line_width(0) == 48);
+        REQUIRE(layout.has_text_overflown() == true);
+    }
+
+    SECTION("A character wider than the whole line stops the layout") {
+        StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH("日本"));
+        auto layout = RectTextLayout(reader, 10, 3, is_multiline::yes, mixed_width);
+        REQUIRE(layout.get_height_in_chars() == 0);
+        REQUIRE(layout.get_width() == 0);
+        REQUIRE(layout.has_text_overflown() == true);
+    }
+
+    SECTION("A character wider than the line after a wrapped line") {
+        StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH("A\n日"));
+        auto layout = RectTextLayout(reader, 10, 3, is_multiline::yes, mixed_width);
+        REQUIRE(layout.get_line_characters(0) == 1);
+        REQUIRE(layout.get_line_characters(1) == 0);
+        REQUIRE(layout.has_text_overflown() == true);
+    }
 }

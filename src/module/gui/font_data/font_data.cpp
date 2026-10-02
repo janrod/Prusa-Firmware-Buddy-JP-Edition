@@ -59,7 +59,8 @@ const uint8_t *Font::character_bitmap(uint32_t character) const {
 const uint8_t *Font::wide_character_bitmap(uint32_t character) const {
     debug_assert(data);
 
-    if (!data->wide) {
+    // Every full-width character is above this, see is_wide() in font.py - spares the search for Latin text
+    if (character < 0x3000 || !data->wide) {
         return nullptr;
     }
 
