@@ -6,8 +6,54 @@
 #include <cinttypes>
 #include <string_view_utf8.hpp>
 
-RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_cols, uint16_t max_rows, is_multiline multiline) {
-    if (max_cols == 0 || max_rows == 0) {
+namespace {
+bool is_full_width(unichar c) {
+    return (c >= 0x3000 && c <= 0x9FFF) || (c >= 0xFF01 && c <= 0xFF60);
+}
+
+/// Japanese wraps between any two full-width characters, except before the ones that
+/// must not start a line - punctuation, small kana and the prolonged sound mark (kinsoku)
+bool can_start_line(unichar c) {
+    switch (c) {
+    case 0x3001: // 、
+    case 0x3002: // 。
+    case 0x30FB: // ・
+    case 0x30FC: // ー
+    case 0x300D: // 」
+    case 0x300F: // 』
+    case 0xFF09: // ）
+    case 0x3005: // 々
+    case 0x3041: // ぁ
+    case 0x3043: // ぃ
+    case 0x3045: // ぅ
+    case 0x3047: // ぇ
+    case 0x3049: // ぉ
+    case 0x3063: // っ
+    case 0x3083: // ゃ
+    case 0x3085: // ゅ
+    case 0x3087: // ょ
+    case 0x308E: // ゎ
+    case 0x30A1: // ァ
+    case 0x30A3: // ィ
+    case 0x30A5: // ゥ
+    case 0x30A7: // ェ
+    case 0x30A9: // ォ
+    case 0x30C3: // ッ
+    case 0x30E3: // ャ
+    case 0x30E5: // ュ
+    case 0x30E7: // ョ
+    case 0x30EE: // ヮ
+    case 0x30F5: // ヵ
+    case 0x30F6: // ヶ
+        return false;
+    default:
+        return true;
+    }
+}
+} // namespace
+
+RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uint16_t max_rows, is_multiline multiline, CharWidth char_width) {
+    if (max_width == 0 || max_rows == 0) {
         overflow = (reader.getUtf8Char() != 0);
         return;
     }
@@ -16,22 +62,24 @@ RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_cols, uint
         max_rows = 1;
     }
 
-    std::optional<int> split_index = std::nullopt;
+    std::optional<Position> split = std::nullopt;
     unichar c = 0;
-    int chars_this_line = 0;
+    Position line;
 
     while ((c = reader.getUtf8Char()) != 0) {
+        const int c_width = char_width(c);
+
         switch (c) {
         case '\n': // new line
 
-            set_current_line_characters(chars_this_line);
+            set_current_line(line);
             skip_char[current_line] = true;
             if (!new_line(max_rows)) {
                 return;
             }
 
-            chars_this_line = 0;
-            split_index = std::nullopt;
+            line = {};
+            split = std::nullopt;
             break;
 
         case 0x3002: // Japanese dot
@@ -42,28 +90,37 @@ RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_cols, uint
             // Whenever we enter new line (except the first one), we always skip 1 char ('\n' || ' ') from the stream
             // If there are more whitespace characters, its clearly a choice
 
-            split_index = chars_this_line + 1;
+            split = Position { line.chars + 1, line.width + c_width };
             skip_char[current_line] = (c == ' ');
             [[fallthrough]];
 
         default:
-            chars_this_line++;
+            if (is_full_width(c) && line.chars > 0 && can_start_line(c)) {
+                split = line;
+                skip_char[current_line] = false;
+            }
 
-            if (chars_this_line > max_cols) {
-                if (!split_index || current_line == max_rows - 1) { // Do not wrap singleline texts
-                    split_index = max_cols;
+            line.chars++;
+            line.width += c_width;
+
+            if (line.width > max_width) {
+                if (!split || current_line == max_rows - 1) { // Do not wrap singleline texts
+                    split = Position { line.chars - 1, line.width - c_width };
                     overflow = true;
                     skip_char[current_line] = false;
                 }
 
                 // It does not count newline char and space before wrapped word
                 // Wrapping cuts overflown word and put it on the next line
-                // If word is too long for a line, it will split the word on max_cols
+                // If word is too long for a line, it will split the word before the overflowing character
 
                 // count chars in next line
-                chars_this_line -= *split_index;
-                set_current_line_characters(*split_index - (skip_char[current_line] ? 1 : 0));
-                split_index = std::nullopt;
+                line.chars -= split->chars;
+                line.width -= split->width;
+                const int skipped_chars = skip_char[current_line] ? 1 : 0;
+                const int skipped_width = skip_char[current_line] ? char_width(' ') : 0;
+                set_current_line({ split->chars - skipped_chars, split->width - skipped_width });
+                split = std::nullopt;
 
                 if (!new_line(max_rows)) {
                     return;
@@ -73,13 +130,14 @@ RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_cols, uint
     }
 
     skip_char[current_line] = false;
-    set_current_line_characters(chars_this_line);
+    set_current_line(line);
     return;
 }
 
-void RectTextLayout::set_current_line_characters(uint8_t char_cnt) {
-    data[current_line] = char_cnt;
-    longest_char_cnt = std::max(longest_char_cnt, char_cnt);
+void RectTextLayout::set_current_line(Position line) {
+    data[current_line] = line.chars;
+    widths[current_line] = line.width;
+    longest_width = std::max<uint16_t>(longest_width, line.width);
 }
 
 uint8_t RectTextLayout::get_current_line_characters() const {

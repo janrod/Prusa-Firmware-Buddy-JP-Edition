@@ -11,6 +11,14 @@ namespace font_data {
 /// inside. A font just points to the data it was built with.
 struct FontData;
 
+/// Full-width characters (kana, kanji, Japanese punctuation) come out of a single
+/// 16x16 font, 1 bit per pixel, shared by all the fonts tall enough to draw them.
+/// The glyphs carry their own spacing, so they also advance by this many pixels.
+inline constexpr uint8_t WIDE_GLYPH_SIZE = 16;
+/// Bytes of a full-width character bitmap - rows of 2 bytes, the most significant bit
+/// is the leftmost pixel
+inline constexpr uint8_t WIDE_GLYPH_BYTES = WIDE_GLYPH_SIZE * WIDE_GLYPH_SIZE / 8;
+
 struct FontSize {
     uint8_t w; ///< Character width [pixels]
     uint8_t h; ///< Character height [pixels]
@@ -36,6 +44,13 @@ struct Font {
     /// for example with non-utf8 characters on filesystems. A font containing no '?'
     /// either falls back to the first character of its bitmap.
     const uint8_t *character_bitmap(uint32_t character) const;
+
+    /// Bitmap of a full-width character, nullptr when the font draws the character from
+    /// its own bitmap. See WIDE_GLYPH_BYTES for the layout.
+    const uint8_t *wide_character_bitmap(uint32_t character) const;
+
+    /// Width of the character [pixels] - `w`, or WIDE_GLYPH_SIZE for full-width characters
+    uint8_t char_width(uint32_t character) const { return wide_character_bitmap(character) ? WIDE_GLYPH_SIZE : w; }
 
     /// Whether the font draws the character itself, rather than falling back to '?'
     bool contains(uint32_t character) const;
