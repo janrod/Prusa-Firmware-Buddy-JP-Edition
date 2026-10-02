@@ -1,3 +1,175 @@
+# Prusa Firmware Buddy - JP Edition (日本語・漢字対応ファームウェア)
+
+> [!WARNING]
+> **Unofficial community firmware.** This project is not made, endorsed or supported by Prusa Research.
+> It is an independent fork of the open-source
+> [prusa3d/Prusa-Firmware-Buddy](https://github.com/prusa3d/Prusa-Firmware-Buddy) (6.10.1).
+> "Prusa", "Original Prusa" and "CORE One" are trademarks of Prusa Research a.s. and are used here
+> only to say which printers the firmware is for.
+>
+> - Installing it requires breaking the appendix on the printer's main board, which is permanent and
+>   affects the electronics warranty.
+> - It comes with **no warranty** (GPL v3.0). Use it at your own risk.
+> - Please do not contact Prusa Research support about problems with this firmware - report them in this
+>   repository's [Issues](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/issues).
+>   Flash official firmware before asking Prusa for help.
+>
+> **非公式のコミュニティ版ファームウェアです。** Prusa Research が作成・承認・サポートしているものではありません。
+> オープンソースの Prusa Firmware Buddy (6.10.1) をもとにした独立したフォークです。
+> 「Prusa」「Original Prusa」「CORE One」は Prusa Research a.s. の商標で、対応機種を示すためにのみ使用しています。
+>
+> - インストールにはメイン基板の「アペンディクス」を折る必要があります。元に戻せず、電子部品の保証に影響します。
+> - **無保証**です (GPL v3.0)。自己責任でご利用ください。
+> - このファームウェアに関する問題を Prusa Research のサポートに問い合わせないでください。
+>   [Issues](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/issues) にご報告ください。
+>   Prusa にサポートを依頼する際は、公式ファームウェアに戻してから問い合わせてください。
+
+The original upstream README follows [below](#buddy).
+
+The stock firmware can only show Japanese as half-width katakana, written word by word with spaces
+(セッティング ノ ロード シュウリョウ). This fork draws kanji and hiragana, and the whole Japanese
+translation is rewritten in modern Japanese (設定の読み込みが完了しました).
+
+## 概要
+
+Prusa純正ファームウェア 6.10.1 をベースに、漢字・ひらがなで表示できるようにした非公式のコミュニティ版です。
+従来のカタカナのみの日本語訳を、すべて漢字かな交じりの日本語に翻訳し直しました。
+
+アペンディクスの折り方は Prusa の
+[公式ガイド](https://help.prusa3d.com/article/zoiw36imrs-flashing-custom-firmware) を参照してください。
+翻訳は機械支援によるもので、まだネイティブスピーカーによる全文チェックは済んでいません。
+誤訳や表示崩れを見つけたら [Issues](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/issues) で教えてください。
+
+## Downloads / ダウンロード
+
+Firmware files are attached to the [releases](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/releases) of this
+repository. Pick the file for your printer:
+
+| Printer / プリンタ | File / ファイル |
+|---|---|
+| Original Prusa MK4, MK4S, MK3.9, MK3.9S | `mk4_*.bbf` |
+| Original Prusa MK3.5, MK3.5S | `mk3.5_*.bbf` |
+| Original Prusa XL | `xl_*.bbf` |
+| Prusa CORE One | `coreone_*.bbf` |
+| Prusa CORE One L | `coreonel_*.bbf` |
+| Prusa CORE One with INDX | `coreone_indx_*.bbf` |
+| Prusa CORE One L with INDX | `coreonel_indx_*.bbf` |
+
+## Original Prusa MINI / MINI+ is not supported / MINI・MINI+ は非対応
+
+**There is no JP Edition firmware for the MINI or MINI+, and there will not be one from this project.**
+Do not flash any of the files above onto a MINI. The MINI source in this repository is left as it is
+upstream, still with katakana only.
+
+Why:
+- **Its screen fonts are too small.** The MINI's smallest font is 13 px tall, smaller than the 16 px kanji.
+  Kanji legible at that size would need a second, smaller kanji font.
+- **Its flash is already full.** The MINI has 895 KB for the firmware, less than half of the 1919 KB the other
+  printers have. It is so tight that Prusa ships a separate MINI firmware for each language. There is no
+  room for a kanji font on top of that.
+
+We have not built or measured a MINI image with kanji; these limits are what rules it out.
+
+**MINI / MINI+ 用の JP Edition はありません。** 上記のファイルを MINI に書き込まないでください。
+MINI は画面フォントが小さく（最小 13 px で、16 px の漢字が収まりません）、ファームウェア用のフラッシュも
+895 KB しかなく、すでに言語ごとに別のファームウェアになるほど容量に余裕がないためです。
+MINI は従来どおりカタカナ表示のままです。
+
+**Installing / インストール:**
+1. Break the appendix on the printer's main board, see Prusa's
+   [guide to flashing custom firmware](https://help.prusa3d.com/article/zoiw36imrs-flashing-custom-firmware).
+   This is permanent and affects the electronics warranty.
+2. Copy the `.bbf` file for your printer to the root of a USB drive, insert it and restart the printer.
+   Confirm the installation.
+3. Select 日本語 in *Settings → Language* (設定 → 言語).
+
+To go back, flash an official firmware from [prusa3d.com](https://www.prusa3d.com/drivers/) the same way.
+The version shown on the printer ends with `-jp.N`, for example `6.10.1-jp.1`.
+
+## Status / 状況
+
+- Tested in the MINI404 simulator on the MK4 only. The other builds compile, but have not run on real
+  hardware yet - reports welcome.
+- The translation was drafted with AI assistance against a shared glossary and checked automatically
+  (format strings, line structure, character set, width). A review by native speakers is still needed.
+- About 125 strings are still wider than their English original and may scroll or be cut off.
+
+## How it works
+
+**Font.** Kana, kanji and Japanese punctuation come from
+[Shinonome 16](http://openlab.ring.gr.jp/efont/shinonome/) (東雲フォント, public domain), a 16x16 bitmap font
+designed for Japanese. The build embeds only the characters the translation actually uses, stored as
+1 bit per pixel: 32 B of bitmap plus a 2 B index, 34 B per character. The full translation uses
+498 kanji and 673 full-width characters in total, about 23 KB.
+
+**Flash.** Everything fits in the printer's internal flash. The MK4 build is slightly *smaller* than stock,
+because the fonts no longer need the half-width katakana:
+
+| MK4 build | Flash used |
+|---|---|
+| Stock 6.10.1 (katakana) | 1,211,396 B |
+| This fork (full translation) | 1,204,692 B |
+| This fork with *every* JIS X 0208 character (6,879, all 6,355 kanji) | 1,415,124 B (72 % of 1919 KB) |
+
+So "kanji does not fit into the printer" is not true for the 32-bit Prusa printers.
+
+**Layout.** Full-width characters advance by 16 px, Latin characters by the width of the font (9-13 px).
+Text layout, line buffers and scrolling labels measure in pixels instead of character cells.
+Japanese wraps between any two full-width characters, except before characters that must not start a
+line (、。ー and small kana; 禁則処理).
+
+**Translation.** Terms prefer established kanji compounds over long katakana loanwords (校正 rather than
+キャリブレーション, 自己診断 rather than セルフテスト) and drop the trailing long vowel of technical loanwords
+(センサ, モータ, JIS Z 8301 style). In the menu font the Japanese UI ends up about 29 % narrower than English.
+
+## How we did it
+
+This was done with the help of an AI coding assistant (Claude, by Anthropic), directed and reviewed by the
+maintainer. In order:
+
+1. **Checked the claim that kanji does not fit.** Read the font pipeline and measured the stock MK4 build:
+   about 750 KB of the 1919 KB firmware flash is free, and a 16x16 1-bit kanji costs 34 B. Even every kanji
+   in JIS X 0208 fits (table above).
+2. **Built a prototype.** Added the Shinonome font to the font generator, made text layout and rendering
+   handle full-width characters, and hand-translated a few screens.
+3. **Tested in the simulator.** Ran the firmware in [MINI404](https://github.com/vintagepc/MINI404),
+   the QEMU-based Prusa simulator, and compared screenshots before and after. The stock simulator release
+   could not boot current firmware, so we used a locally patched build (board revision, two I2C bugs and
+   one display mode).
+4. **Translated all 1,795 strings.** AI agents translated in batches against a shared glossary. A
+   validation script checked every string: printf format codes kept in the same order, line structure,
+   only characters the font contains, and width compared with English. The maintainer spot-checked
+   terminology and fixed strings whose meaning depended on the code.
+5. **Made it compact.** The first translation leaned on long katakana loanwords and drew each kanji in two
+   Latin cells, so it came out 3 % wider than English. A second pass with a kanji-first glossary, plus drawing
+   kanji at their own 16 px width, made it 29 % narrower than English.
+6. **Built the release** for every 32-bit printer except the MINI, from the commits below.
+
+What this means for you: the code has been tested only in the simulator on the MK4, and the translation is
+machine-made with human spot checks, not a professional or native-speaker translation. Please report anything
+wrong or unnatural in [Issues](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/issues).
+
+The changes are in two commits on top of upstream 6.10.1:
+- `gui: Draw full-width Japanese characters` - font generation (`src/module/gui/font_data`), text layout
+  (`src/common/str_utils.cpp`) and rendering (`src/guiapi`).
+- `lang: Translate Japanese with kanji` - `src/lang/po/ja/Prusa-Firmware-Buddy_ja.po`.
+
+**Building it yourself:**
+
+```bash
+python utils/build.py --preset coreone --build-type release --bootloader yes
+```
+
+The `.bbf` ends up in `build/products`. See [Building](#building-on-all-platforms-without-an-ide) below
+for details.
+
+## License
+
+Same as upstream: the source code is GPL v3.0, provided without any warranty, graphics CC BY-NC-SA 4.0 (see [LICENSE](LICENSE.md)).
+The Shinonome font is public domain.
+
+---
+
 # Buddy
 This repository includes source code and firmware releases for the Original Prusa 3D printers based on the 32-bit ARM microcontrollers.
 
