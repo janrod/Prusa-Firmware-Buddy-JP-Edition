@@ -44,7 +44,7 @@
 >   Prusa にサポートを依頼する際は、公式ファームウェアに戻してから問い合わせてください。
 > - **MINI / MINI+ には対応していません。**
 
-The original upstream README follows [below](#buddy).
+The original upstream README follows [below](#original-readme-prusa-firmware-buddy).
 
 The stock firmware can only show Japanese as half-width katakana, written word by word with spaces
 (セッティング ノ ロード シュウリョウ). This fork draws kanji and hiragana, and the whole Japanese
@@ -191,11 +191,16 @@ The Shinonome font is public domain.
 
 ---
 
-# Buddy
+# Original README (Prusa Firmware Buddy)
+
+> This is the upstream README of [prusa3d/Prusa-Firmware-Buddy](https://github.com/prusa3d/Prusa-Firmware-Buddy),
+> kept for reference. Strikethrough marks what does not apply to the JP Edition.
+
+## Buddy
 This repository includes source code and firmware releases for the Original Prusa 3D printers based on the 32-bit ARM microcontrollers.
 
 The currently supported models are:
-- Original Prusa MINI/MINI+
+- ~~Original Prusa MINI/MINI+~~ (not supported by the JP Edition)
 - Original Prusa MK3.5
 - Original Prusa MK3.9
 - Original Prusa MK4
