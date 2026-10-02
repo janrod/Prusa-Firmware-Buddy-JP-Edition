@@ -1,28 +1,48 @@
 # Prusa Firmware Buddy - JP Edition (日本語・漢字対応ファームウェア)
 
-> [!WARNING]
-> **Unofficial community firmware.** This project is not made, endorsed or supported by Prusa Research.
+> [!CAUTION]
+> ## ⚠️ Unofficial firmware - read before installing
+>
+> **This is unofficial community firmware. It is not made, tested, endorsed or supported by Prusa Research.**
 > It is an independent fork of the open-source
 > [prusa3d/Prusa-Firmware-Buddy](https://github.com/prusa3d/Prusa-Firmware-Buddy) (6.10.1).
-> "Prusa", "Original Prusa" and "CORE One" are trademarks of Prusa Research a.s. and are used here
-> only to say which printers the firmware is for.
+> "Prusa", "Original Prusa" and "CORE One" are trademarks of Prusa Research a.s., used here only to say
+> which printers the firmware is for.
 >
-> - Installing it requires breaking the appendix on the printer's main board, which is permanent and
->   affects the electronics warranty.
-> - It comes with **no warranty** (GPL v3.0). Use it at your own risk.
-> - Please do not contact Prusa Research support about problems with this firmware - report them in this
->   repository's [Issues](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/issues).
->   Flash official firmware before asking Prusa for help.
+> - **You have to break the appendix seal on the printer's main board to install it.** From the factory the
+>   printer only accepts firmware signed by Prusa. Breaking the seal is permanent - it cannot be undone - and
+>   lets the printer accept any firmware.
+> - **What Prusa says:** "Breaking the appendix seal won't void your warranty", but Prusa "disclaim[s]
+>   liability for any kind of damage or harm a printer with a broken seal may cause (e.g. in case of a fire)."
+>   Read Prusa's article for your printer before you start:
+>   - CORE One L, CORE One, MK4/S, MK3.9/S, MK3.5/S:
+>     [Flashing custom firmware](https://help.prusa3d.com/article/flashing-custom-firmware-core-one-l-core-one-mk4-s-mk3-9-s-mk3-5-s_814967) (seal on the xBuddy board, inside the electronics box)
+>   - XL: [Imposter! Fake signature #17606 (XL)](https://help.prusa3d.com/article/imposter-fake-signature-17606-xl_399880) (seal on the XLBuddy board)
+> - **No warranty from this project** (GPL v3.0). It has only been tested in a simulator on the MK4, never on
+>   real hardware. Use it entirely at your own risk.
+> - **Do not contact Prusa Research support about this firmware.** Report problems in this repository's
+>   [Issues](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/issues), and flash official firmware
+>   again before asking Prusa for help.
+> - **MINI / MINI+ is not supported** - see [below](#original-prusa-mini--mini-is-not-supported--minimini-は非対応).
 >
-> **非公式のコミュニティ版ファームウェアです。** Prusa Research が作成・承認・サポートしているものではありません。
+> ## ⚠️ 非公式ファームウェアです - インストール前に必ずお読みください
+>
+> **非公式のコミュニティ版です。Prusa Research による作成・テスト・承認・サポートは一切ありません。**
 > オープンソースの Prusa Firmware Buddy (6.10.1) をもとにした独立したフォークです。
 > 「Prusa」「Original Prusa」「CORE One」は Prusa Research a.s. の商標で、対応機種を示すためにのみ使用しています。
 >
-> - インストールにはメイン基板の「アペンディクス」を折る必要があります。元に戻せず、電子部品の保証に影響します。
-> - **無保証**です (GPL v3.0)。自己責任でご利用ください。
-> - このファームウェアに関する問題を Prusa Research のサポートに問い合わせないでください。
+> - **インストールにはメイン基板の「アペンディクス」(シール)を折る必要があります。** 出荷時のプリンタは Prusa が
+>   署名したファームウェアしか受け付けません。折ると元に戻せず、以後どのファームウェアでも書き込めるようになります。
+> - **Prusa の説明:** アペンディクスを折っても保証は無効になりません。ただし、アペンディクスを折ったプリンタが
+>   引き起こす損害 (火災など) について Prusa は一切責任を負いません。作業前に機種ごとの Prusa の記事を確認してください:
+>   - CORE One L、CORE One、MK4/S、MK3.9/S、MK3.5/S: [Flashing custom firmware](https://help.prusa3d.com/article/flashing-custom-firmware-core-one-l-core-one-mk4-s-mk3-9-s-mk3-5-s_814967)
+>   - XL: [Imposter! Fake signature #17606 (XL)](https://help.prusa3d.com/article/imposter-fake-signature-17606-xl_399880)
+> - **本プロジェクトは無保証です** (GPL v3.0)。MK4 のシミュレータでのみ動作確認しており、実機ではまだテストしていません。
+>   すべて自己責任でご利用ください。
+> - **このファームウェアについて Prusa Research のサポートに問い合わせないでください。** 不具合は
 >   [Issues](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/issues) にご報告ください。
 >   Prusa にサポートを依頼する際は、公式ファームウェアに戻してから問い合わせてください。
+> - **MINI / MINI+ には対応していません。**
 
 The original upstream README follows [below](#buddy).
 
@@ -35,8 +55,7 @@ translation is rewritten in modern Japanese (設定の読み込みが完了し�
 Prusa純正ファームウェア 6.10.1 をベースに、漢字・ひらがなで表示できるようにした非公式のコミュニティ版です。
 従来のカタカナのみの日本語訳を、すべて漢字かな交じりの日本語に翻訳し直しました。
 
-アペンディクスの折り方は Prusa の
-[公式ガイド](https://help.prusa3d.com/article/zoiw36imrs-flashing-custom-firmware) を参照してください。
+アペンディクスの折り方は、上記の機種ごとの Prusa の記事を参照してください。
 翻訳は機械支援によるもので、まだネイティブスピーカーによる全文チェックは済んでいません。
 誤訳や表示崩れを見つけたら [Issues](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/issues) で教えてください。
 
@@ -59,8 +78,9 @@ lists the checksums.
 ## Original Prusa MINI / MINI+ is not supported / MINI・MINI+ は非対応
 
 **There is no JP Edition firmware for the MINI or MINI+, and there will not be one from this project.**
-Do not flash any of the files above onto a MINI. The MINI source in this repository is left as it is
-upstream, still with katakana only.
+Do not flash any of the files above onto a MINI, and do not build this repository for a MINI either: all
+printers share one Japanese translation, so a MINI build would show `?` in place of every kanji. MINI owners
+should keep using [Prusa's official firmware](https://www.prusa3d.com/drivers/), which shows Japanese in katakana.
 
 Why:
 - **Its screen fonts are too small.** The MINI's smallest font is 13 px tall, smaller than the 16 px kanji.
@@ -74,12 +94,12 @@ We have not built or measured a MINI image with kanji; these limits are what rul
 **MINI / MINI+ 用の JP Edition はありません。** 上記のファイルを MINI に書き込まないでください。
 MINI は画面フォントが小さく（最小 13 px で、16 px の漢字が収まりません）、ファームウェア用のフラッシュも
 895 KB しかなく、すでに言語ごとに別のファームウェアになるほど容量に余裕がないためです。
-MINI は従来どおりカタカナ表示のままです。
+このリポジトリを MINI 向けにビルドしないでください。翻訳ファイルは全機種共通のため、漢字がすべて「?」で表示されます。
+MINI では Prusa の公式ファームウェア (カタカナ表示) をそのままご利用ください。
 
 **Installing / インストール:**
-1. Break the appendix on the printer's main board, see Prusa's
-   [guide to flashing custom firmware](https://help.prusa3d.com/article/zoiw36imrs-flashing-custom-firmware).
-   This is permanent and affects the electronics warranty.
+1. Break the appendix seal on the printer's main board, following Prusa's article for your printer:
+   [CORE One L, CORE One, MK4/S, MK3.9/S, MK3.5/S](https://help.prusa3d.com/article/flashing-custom-firmware-core-one-l-core-one-mk4-s-mk3-9-s-mk3-5-s_814967) or [XL](https://help.prusa3d.com/article/imposter-fake-signature-17606-xl_399880). This is permanent.
 2. Copy the `.bbf` file for your printer to the root of a USB drive, insert it and restart the printer.
    Confirm the installation.
 3. Select 日本語 in *Settings → Language* (設定 → 言語).
