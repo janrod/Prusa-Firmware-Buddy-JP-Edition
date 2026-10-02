@@ -1,5 +1,12 @@
 # Prusa Firmware Buddy - JP Edition (日本語・漢字対応ファームウェア)
 
+<p align="center">
+  <img src="doc/jp-edition/home.png" width="32%" alt="Home screen in Japanese: 印刷, 予熱, フィラメント, 制御, 設定, 情報">
+  <img src="doc/jp-edition/settings.png" width="32%" alt="Settings menu (設定) in Japanese">
+  <img src="doc/jp-edition/help.png" width="32%" alt="Firmware update help with wrapped Japanese text">
+</p>
+<p align="center"><sub>Original Prusa MK4 running the JP Edition in the MINI404 simulator: home screen, settings, wrapped help text.</sub></p>
+
 > [!CAUTION]
 > ## ⚠️ Unofficial firmware - read before installing
 >
