@@ -19,6 +19,7 @@
 #include <option/enable_translation_uk.h>
 #include <str_utils.hpp>
 #include <img_resources.hpp>
+#include <printers.h>
 
 class MI_LangBase : public IWindowMenuItem {
 public:
@@ -68,7 +69,11 @@ using ScreenMenuLanguages__ = ScreenMenu<EFooter::Off,
 #endif
 #if ENABLE_TRANSLATION_JA()
     ,
+    #if PRINTER_IS_PRUSA_MINI()
     MI_LANG<"ニホンゴ"_tstr, "ja"_tstr, &img::flag_ja_16x11>
+    #else
+    MI_LANG<"日本語"_tstr, "ja"_tstr, &img::flag_ja_16x11>
+    #endif
 #endif
 #if ENABLE_TRANSLATION_UK()
     ,
