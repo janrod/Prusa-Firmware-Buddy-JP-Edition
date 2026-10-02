@@ -70,6 +70,14 @@ void render_line(StringReaderUtf8 &reader, uint8_t chars_to_print, Rect16 rc, co
             width += char_w;
         }
 
+        if (char_cnt == 0) {
+            // A character wider than the whole buffer cannot be drawn - leave its space empty
+            // rather than loop forever or write past the buffer
+            pt.x += pf->char_width(reader.getUtf8Char());
+            chars_left--;
+            continue;
+        }
+
         // Storing text in the display buffer
         uint16_t x = 0;
         for (uint8_t j = 0; j < char_cnt; j++) {
