@@ -8,10 +8,17 @@
 
 namespace font_data {
 
+struct WideFontData {
+    /// The characters the bitmap holds, sorted, in the order they are stored in
+    std::span<const uint16_t> charset;
+    const uint8_t *bitmap; ///< WIDE_GLYPH_BYTES per character, in the order of the charset
+};
+
 struct FontData {
     /// The characters the bitmap holds, sorted, in the order they are stored in
     std::span<const uint16_t> charset;
     const uint8_t *bitmap; ///< 4 bits per pixel, characters in the order of the charset
+    const WideFontData *wide; ///< Full-width characters drawn over two cells, if any
 };
 
 namespace {
@@ -49,12 +56,29 @@ const uint8_t *Font::character_bitmap(uint32_t character) const {
     return data->bitmap + char_position(*data, character) * bytes_per_character;
 }
 
+const uint8_t *Font::wide_character_bitmap(uint32_t character) const {
+    debug_assert(data);
+
+    // Every full-width character is above this, see is_wide() in font.py - spares the search for Latin text
+    if (character < 0x3000 || !data->wide) {
+        return nullptr;
+    }
+
+    const auto first = data->wide->charset.begin();
+    const auto last = data->wide->charset.end();
+    const auto i = find_character(first, last, character);
+    if (i == last) {
+        return nullptr;
+    }
+    return data->wide->bitmap + std::distance(first, i) * WIDE_GLYPH_BYTES;
+}
+
 bool Font::contains(uint32_t character) const {
     debug_assert(data);
 
     const auto first = data->charset.begin();
     const auto last = data->charset.end();
-    return find_character(first, last, character) != last;
+    return find_character(first, last, character) != last || wide_character_bitmap(character);
 }
 
 } // namespace font_data

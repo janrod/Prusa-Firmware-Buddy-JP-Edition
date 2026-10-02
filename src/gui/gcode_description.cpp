@@ -1,11 +1,12 @@
 #include "gcode_description.hpp"
+#include <display_helper.h>
 #include <cstdarg>
 #include <guiconfig/guiconfig.h>
 #include <span>
 #include <bsod/bsod.h>
 
 size_t description_line_t::title_width(const string_view_utf8 &title_str) {
-    return title_str.computeNumUtf8Chars() * width(Font::small);
+    return calculate_text_size(title_str, Font::small, is_multiline::no).w;
 }
 
 size_t description_line_t::value_width(const string_view_utf8 &title_str) {

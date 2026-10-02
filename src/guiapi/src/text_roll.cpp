@@ -88,10 +88,20 @@ void txtroll_t::render_text(const Rect16 &rect, const string_view_utf8 &text, Fo
 
 uint16_t txtroll_t::meas(Rect16 rc, const string_view_utf8 &text, Font font, padding_ui8_t padding) {
     rc.CutPadding(padding);
-    const auto font_w = resource_font(font)->w;
-    uint16_t meas_x = 0, len = text.computeNumUtf8Chars();
-    if (len * font_w > rc.Width()) {
-        meas_x = len - rc.Width() / font_w;
+    const auto *pf = resource_font(font);
+
+    uint16_t width = 0;
+    StringReaderUtf8 reader(text);
+    for (unichar c = reader.getUtf8Char(); c; c = reader.getUtf8Char()) {
+        width += pf->char_width(c);
     }
-    return meas_x;
+
+    // Characters to roll out of view, until the rest fits
+    uint16_t hidden = 0;
+    StringReaderUtf8 hide(text);
+    while (width > rc.Width()) {
+        width -= pf->char_width(hide.getUtf8Char());
+        hidden++;
+    }
+    return hidden;
 }

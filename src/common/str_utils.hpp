@@ -70,20 +70,39 @@ struct TemplateString {
 template <typename T, T... chars>
 constexpr TemplateString<chars...> operator""_tstr() { return {}; }
 
+/// Width of a character, in the units the layout is measured in - pixels of a font, or
+/// character cells when there is no function (every character is 1 wide).
+///
+/// A plain function with a context, so that the layout does not depend on the fonts.
+struct CharWidth {
+    uint8_t (*function)(const void *context, unichar character) = nullptr;
+    const void *context = nullptr;
+
+    uint8_t operator()(unichar character) const { return function ? function(context, character) : 1; }
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 ///
 /// numbers of characters in lines
 class RectTextLayout {
 public:
-    RectTextLayout(StringReaderUtf8 &reader, uint16_t max_cols, uint16_t max_rows, is_multiline multiline);
+    /// \param max_width width of the rectangle, in the units of char_width
+    RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uint16_t max_rows, is_multiline multiline, CharWidth char_width = {});
 
-    uint8_t get_width_in_chars() const { return longest_char_cnt; }
+    /// Width of the longest line, in the units of char_width
+    uint16_t get_width() const { return longest_width; }
+
+    /// Width of the longest line, in characters - for layouts without char_width
+    uint16_t get_width_in_chars() const { return get_width(); }
 
     uint8_t get_height_in_chars() const { return get_line_count(); }
 
     bool has_text_overflown() const { return overflow; }
 
     uint8_t get_line_characters(uint8_t line) const { return data[line]; }
+
+    /// Width of the line, in the units of char_width
+    uint16_t get_line_width(uint8_t line) const { return widths[line]; }
 
     uint8_t get_line_count() const;
 
@@ -95,12 +114,19 @@ private:
     using Data_t = std::array<uint8_t, MaxLines>;
     std::bitset<MaxLines> skip_char = {};
 
+    /// Position within a line
+    struct Position {
+        int chars = 0;
+        int width = 0;
+    };
+
     Data_t data = {};
+    std::array<uint16_t, MaxLines> widths = {};
     uint8_t current_line = 0;
-    uint8_t longest_char_cnt = 0;
+    uint16_t longest_width = 0;
     bool overflow = false;
 
-    void set_current_line_characters(uint8_t char_cnt);
+    void set_current_line(Position line);
 
     uint8_t get_current_line_characters() const;
 

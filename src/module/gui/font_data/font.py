@@ -30,6 +30,18 @@ CYRILLIC = ([0x0404, 0x0406, 0x0407] + list(range(0x0410, 0x042A)) + [0x042C] +
             list(range(0x042E, 0x044A)) + list(range(0x044C, 0x0450)) +
             [0x0454, 0x0456, 0x0457, 0x0490, 0x0491])
 
+# Full-width characters - kana, kanji, Japanese punctuation and full-width forms. They do
+# not fit a character cell, so the fonts tall enough draw them over two cells out of a
+# separate 16x16 source font, 1 bit per pixel.
+WIDE_SIZE = 16
+
+
+# The text layout's is_full_width() (src/common/str_utils.cpp) has to use the same ranges
+def is_wide(ch: str):
+    code = ord(ch)
+    return 0x3000 <= code <= 0x9FFF or 0xFF01 <= code <= 0xFF60
+
+
 # Every font holds these, whatever the translations use: '?' is what a character the
 # font does not hold falls back to, '°' spells out degrees celsius.
 COMMON = '?°'
@@ -62,6 +74,11 @@ def translated_chars(translation):
                if ch.isprintable())
 
 
+def narrow_chars(translation):
+    """Characters of the translation drawn inside a single character cell."""
+    return set(ch for ch in translated_chars(translation) if not is_wide(ch))
+
+
 def digits_chars():
     # Reduced character set for font LARGE
     return set("0123456789.%? -,")
@@ -70,7 +87,7 @@ def digits_chars():
 def latin_and_accents_chars(po_dir: Path):
     chars = set()
     for langcode in ACCENTED_LANGUAGES:
-        chars.update(translated_chars(load_translation(po_dir, langcode)))
+        chars.update(narrow_chars(load_translation(po_dir, langcode)))
 
     chars.update(COMMON)
     # The language names are not translated, so they are in no .po file
@@ -81,7 +98,7 @@ def latin_and_accents_chars(po_dir: Path):
 
 
 def latin_and_katakana_chars(po_dir: Path):
-    chars = translated_chars(load_translation(po_dir, 'ja'))
+    chars = narrow_chars(load_translation(po_dir, 'ja'))
 
     chars.update(COMMON)
     # The language name is not translated, so it is in no .po file
@@ -95,7 +112,7 @@ def latin_and_katakana_chars(po_dir: Path):
 
 
 def latin_and_cyrillic_chars(po_dir: Path):
-    chars = translated_chars(load_translation(po_dir, 'uk'))
+    chars = narrow_chars(load_translation(po_dir, 'uk'))
 
     chars.update(COMMON)
     # The language name is not translated, so it is in no .po file
@@ -114,8 +131,23 @@ def character_sets(po_dir: Path):
         'latin_and_cyrillic': latin_and_cyrillic_chars(po_dir),
         'latin_and_katakana': latin_and_katakana_chars(po_dir),
     }
-    sets['full'] = set().union(*sets.values())
+    # Japanese of the fonts holding everything is full-width, so they need no katakana
+    sets['full'] = set().union(sets['digits'], sets['latin_and_accents'],
+                               sets['latin_and_cyrillic'])
     return {name: sorted(chars) for name, chars in sorted(sets.items())}
+
+
+def wide_chars(po_dir: Path):
+    """The full-width characters, sorted the way they are laid out in the bitmap."""
+    chars = set(ch for ch in translated_chars(load_translation(po_dir, 'ja'))
+                if is_wide(ch))
+    # The language name is not translated, so it is in no .po file
+    chars.update('日本語')
+    # Kana are cheap and file names can hold any of them - all of JIS X 0208 has
+    chars.update(chr(ch) for ch in range(0x3041, 0x3093 + 1))
+    chars.update(chr(ch) for ch in range(0x30A1, 0x30F6 + 1))
+    chars.update('・ー')
+    return sorted(chars)
 
 
 #
@@ -132,6 +164,11 @@ class Font:
     height: int  # character height [pixels]
     type: str  # regular, bold, ...
     charset: str  # one of the character sets above
+
+    @property
+    def draws_wide(self):
+        """Whether the font draws the full-width characters over two of its cells."""
+        return self.charset == 'full' and self.height >= WIDE_SIZE
 
     @property
     def name(self):
@@ -281,6 +318,32 @@ def emit_character_set(out, name: str, chars):
     out.write(f'static_assert(std::ranges::is_sorted({name}_set));\n\n')
 
 
+def load_wide_glyphs(bdf_path: Path):
+    """Bitmaps of the JIS X 0208 BDF font, 16 rows of 2 bytes each, by character."""
+    glyphs = {}
+    lines = iter(bdf_path.read_text(encoding='ascii').splitlines())
+    for line in lines:
+        if line.startswith('ENCODING '):
+            jis = int(line.split()[1])
+            char = bytes((jis >> 8 | 0x80, jis & 0xFF | 0x80)).decode('euc_jp')
+        elif line == 'BITMAP':
+            rows = [int(next(lines), 16) for _ in range(WIDE_SIZE)]
+            glyphs[char] = b''.join(row.to_bytes(2, 'big') for row in rows)
+    return glyphs
+
+
+def emit_wide_font(out, chars, glyphs):
+    unsupported = [ch for ch in chars if ch not in glyphs]
+    if unsupported:
+        raise RuntimeError(
+            f'wide: no glyph for {"".join(unsupported)!r} in the source bdf')
+
+    emit_character_set(out, 'wide', chars)
+    emit_array(out, 'constexpr uint8_t wide_bitmap[]',
+               (f'0x{byte:02x}' for ch in chars for byte in glyphs[ch]))
+    out.write('\n')
+
+
 def emit_font(out, font: Font, bitmap: bytes):
     # The bitmap is private to the translation unit, the font data is what the header
     # declares
@@ -291,18 +354,23 @@ def emit_font(out, font: Font, bitmap: bytes):
 
     out.write(f'static_assert({font.name}.w == {font.width}'
               f' && {font.name}.h == {font.height});\n')
+    wide = '&wide_data' if font.draws_wide else 'nullptr'
     out.write(f'constinit const FontData {font.name}_data'
-              f' {{ {font.charset}_set, {font.name}_bitmap }};\n\n')
+              f' {{ {font.charset}_set, {font.name}_bitmap, {wide} }};\n\n')
 
 
-def generate(out, po_dir: Path, png_dir: Path, sources: list):
+def generate(out, po_dir: Path, png_dir: Path, wide_bdf: Path, sources: list):
     """Write the font data, collecting what it was built out of into sources."""
     sets = character_sets(po_dir)
     sources.extend(po_path(po_dir, lang) for lang in LANGUAGES)
+    sources.append(wide_bdf)
 
     out.write('namespace {\n\n')
     for name in sorted({font.charset for font in FONTS}):
         emit_character_set(out, name, sets[name])
+    emit_wide_font(out, wide_chars(po_dir), load_wide_glyphs(wide_bdf))
+    out.write(
+        'constinit const WideFontData wide_data { wide_set, wide_bitmap };\n')
     out.write('} // namespace\n\n')
 
     for font in FONTS:
@@ -340,6 +408,11 @@ def main():
                         type=Path,
                         required=True,
                         help='directory holding the source pngs')
+    parser.add_argument(
+        '--wide-bdf',
+        type=Path,
+        required=True,
+        help='16x16 JIS X 0208 bdf font of the full-width characters')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--depfile',
                         type=Path,
@@ -349,7 +422,7 @@ def main():
     sources = []
     try:
         with open(args.output, 'w', encoding='utf-8') as out:
-            generate(out, args.po_dir, args.png_dir, sources)
+            generate(out, args.po_dir, args.png_dir, args.wide_bdf, sources)
     except RuntimeError as error:
         args.output.unlink(missing_ok=True)
         sys.exit(str(error))

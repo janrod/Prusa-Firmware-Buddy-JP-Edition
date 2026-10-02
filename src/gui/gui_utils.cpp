@@ -27,7 +27,7 @@ std::optional<Font> auto_select_font(const AutoSelectFontArgs &args) {
     while (true) {
         StringReaderUtf8 reader(args.text);
         const auto *res = resource_font(*fnt);
-        const RectTextLayout layout(reader, args.rect.Width() / res->w, args.rect.Height() / res->h, args.multiline ? is_multiline::yes : is_multiline::no);
+        const RectTextLayout layout(reader, args.rect.Width(), args.rect.Height() / res->h, args.multiline ? is_multiline::yes : is_multiline::no, char_width(res));
 
         if (!layout.has_text_overflown()) {
             return *fnt;

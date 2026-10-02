@@ -5,6 +5,7 @@
  */
 
 #include "WindowMenuSpin.hpp"
+#include <display_helper.h>
 
 #include <utils/string_builder.hpp>
 #include <gui/event/knob_event.hpp>
@@ -144,7 +145,7 @@ Rect16::Width_t WiSpin::calculateExtensionWidth(const NumericInputConfig &config
     }
 
     if (config.special_value.has_value()) {
-        ret = std::max<size_t>(ret, _(config.special_value_str).computeNumUtf8Chars() * width(TheFont));
+        ret = std::max<size_t>(ret, calculate_text_size(_(config.special_value_str), TheFont, is_multiline::no).w);
     }
 
     ret += Padding.left + Padding.right + half_space;

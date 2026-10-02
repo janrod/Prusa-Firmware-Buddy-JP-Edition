@@ -8,6 +8,7 @@
 #include <font_data/font_data.hpp>
 #include <option/enable_translation_ja.h>
 #include <option/enable_translation_uk.h>
+#include <str_utils.hpp>
 
 enum class Font : uint8_t {
     small = 0,
@@ -51,6 +52,11 @@ inline constexpr const font_t &font_bold_30x53 = font_data::bold_30x53_digits;
 #endif
 
 const font_t *resource_font(Font id);
+
+/// Character widths of the font in pixels, for the text layout
+inline CharWidth char_width(const font_t *font) {
+    return { [](const void *f, unichar c) -> uint8_t { return static_cast<const font_t *>(f)->char_width(c); }, font };
+}
 
 /**
  * @brief Get font size in pixels.

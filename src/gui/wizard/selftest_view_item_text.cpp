@@ -36,7 +36,7 @@ static constexpr Font font = GuiDefaults::DefaultFont;
 
 Rect16::Height_t SelfTestViewText::CalculateHeight(const string_view_utf8 &txt, is_multiline multiln, Rect16::Width_t width) {
     StringReaderUtf8 reader(txt);
-    const auto layout = RectTextLayout(reader, width / ::width(font), 255, multiln);
+    const auto layout = RectTextLayout(reader, width, 255, multiln, char_width(resource_font(font)));
     return layout.get_height_in_chars() * ::height(font);
 }
 

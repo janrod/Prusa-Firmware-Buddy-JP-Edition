@@ -243,12 +243,42 @@ namespace display {
 /// \param clr_fg font/foreground color
 /// If font is not available for the character, solid rectangle will be drawn in background color
 void draw_char(point_ui16_t pt, unichar c, const font_t *pf, Color clr_bg, Color clr_fg) {
-    store_char_in_buffer(1, 0, c, pf, clr_bg, clr_fg);
-    draw_from_buffer(pt, pf->w, pf->h);
+    const uint8_t char_w = pf->char_width(c);
+    store_char_in_buffer(char_w, 0, c, pf, clr_bg, clr_fg);
+    draw_from_buffer(pt, char_w, pf->h);
 }
 
-void store_char_in_buffer(uint16_t char_cnt, uint16_t curr_char_idx, unichar c, const font_t *pf, Color clr_bg, Color clr_fg) {
+namespace {
+    /// Full-width characters are 1 bit per pixel, vertically centered in the line
+    void store_wide_char_in_buffer(uint16_t line_width, uint16_t x, const uint8_t *bitmap, const font_t *pf, Color clr_bg, Color clr_fg) {
+        const uint8_t pms = 15;
+        DispBuffer buff(pms, clr_bg, clr_fg);
+
+        constexpr uint16_t char_w = font_data::WIDE_GLYPH_SIZE;
+        const uint16_t pad_y = (pf->h - font_data::WIDE_GLYPH_SIZE) / 2;
+
+        uint32_t buffer_offset = x * STORE_FN_PIXEL_SIZE;
+        const uint32_t buffer_row_increment = (line_width - char_w) * STORE_FN_PIXEL_SIZE;
+        for (uint16_t j = 0; j < pf->h; j++) {
+            const uint16_t row = j - pad_y; // wraps around above the glyph
+            const uint16_t bits = row < font_data::WIDE_GLYPH_SIZE ? (bitmap[2 * row] << 8 | bitmap[2 * row + 1]) : 0;
+            for (uint16_t i = 0; i < char_w; i++) {
+                const bool set = bits & (0x8000 >> i);
+                buff.OffsetInsert(set ? pms : 0, buffer_offset);
+                buffer_offset += STORE_FN_PIXEL_SIZE;
+            }
+            buffer_offset += buffer_row_increment;
+        }
+    }
+} // namespace
+
+void store_char_in_buffer(uint16_t line_width, uint16_t x, unichar c, const font_t *pf, Color clr_bg, Color clr_fg) {
     [[maybe_unused]] StoreCharInBufferMeasure measure { pf };
+
+    if (const uint8_t *wide = pf->wide_character_bitmap(c)) {
+        store_wide_char_in_buffer(line_width, x, wide, pf, clr_bg, clr_fg);
+        return;
+    }
 
     const uint16_t char_w = pf->w; // char width
     const uint16_t char_h = pf->h; // char height
@@ -260,8 +290,8 @@ void store_char_in_buffer(uint16_t char_cnt, uint16_t curr_char_idx, unichar c, 
     bool load = true; // load next byte from font data?
     uint8_t crd = 0; // current byte of font data
 
-    uint32_t buffer_offset = curr_char_idx * char_w * STORE_FN_PIXEL_SIZE;
-    uint32_t buffer_row_increment = (char_cnt - 1) * char_w * STORE_FN_PIXEL_SIZE;
+    uint32_t buffer_offset = x * STORE_FN_PIXEL_SIZE;
+    uint32_t buffer_row_increment = (line_width - char_w) * STORE_FN_PIXEL_SIZE;
     for (uint16_t j = 0; j < char_h; j++) {
         for (uint16_t i = 0; i < char_w; i++) {
             uint8_t color;

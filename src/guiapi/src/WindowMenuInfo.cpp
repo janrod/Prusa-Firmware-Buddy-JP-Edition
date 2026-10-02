@@ -5,6 +5,7 @@
  */
 
 #include "WindowMenuInfo.hpp"
+#include <display_helper.h>
 
 IWiInfo::IWiInfo(const string_view_utf8 &value, const string_view_utf8 &label, const img::Resource *id_icon, is_enabled_t enabled, is_hidden_t hidden)
     : IWindowMenuItem(label, 0, id_icon, enabled, hidden)
@@ -13,7 +14,7 @@ IWiInfo::IWiInfo(const string_view_utf8 &value, const string_view_utf8 &label, c
 }
 
 void IWiInfo::update_extension_width() {
-    uint16_t new_width = value_.computeNumUtf8Chars() * width(font);
+    uint16_t new_width = calculate_text_size(value_, font, is_multiline::no).w;
 
     if (!GetLabel().isNULLSTR()) {
         // Make sure there is enough space for at least a few characters of the label

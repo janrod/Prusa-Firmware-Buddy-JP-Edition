@@ -45,7 +45,9 @@ struct BorrowBuffer {
 };
 
 uint32_t buffer_pixel_size();
-void store_char_in_buffer(uint16_t char_cnt, uint16_t curr_char_idx, unichar c, const font_t *pf, Color clr_bg, Color clr_fg);
+/// Store a character into the display buffer holding a line `line_width` pixels wide,
+/// `x` pixels from the start of the line. See font_t::char_width for the character's width.
+void store_char_in_buffer(uint16_t line_width, uint16_t x, unichar c, const font_t *pf, Color clr_bg, Color clr_fg);
 void draw_from_buffer(point_ui16_t pt, uint16_t w, uint16_t h);
 
 } // namespace display

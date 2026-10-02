@@ -45,32 +45,45 @@ void fill_between_rectangles(const Rect16 *r_out, const Rect16 *r_in, Color colo
 size_ui16_t calculate_text_size(const string_view_utf8 &str, const Font font, is_multiline multiline) {
     const auto *pf = resource_font(font);
     StringReaderUtf8 reader(str);
-    const auto layout = RectTextLayout(reader, 255, 255, multiline);
+    const auto layout = RectTextLayout(reader, UINT16_MAX, 255, multiline, char_width(pf));
     debug_assert(!layout.has_text_overflown());
-    return size_ui16_t(layout.get_width_in_chars() * pf->w, layout.get_height_in_chars() * pf->h);
+    return size_ui16_t(layout.get_width(), layout.get_height_in_chars() * pf->h);
 }
 
 void render_line(StringReaderUtf8 &reader, uint8_t chars_to_print, Rect16 rc, const font_t *pf, Color clr_bg, Color clr_fg) {
-    const uint16_t buff_char_capacity = display::buffer_pixel_size() / (pf->w * pf->h);
-    debug_assert(buff_char_capacity > 0 && "Buffer needs to take at least one character");
+    const uint16_t buff_width_capacity = display::buffer_pixel_size() / pf->h;
+    debug_assert(buff_width_capacity >= std::max<uint16_t>(pf->w, font_data::WIDE_GLYPH_SIZE) && "Buffer needs to take at least one character");
     point_ui16_t pt = point_ui16(rc.Left(), rc.Top());
 
     uint8_t chars_left = chars_to_print;
     while (chars_left > 0) {
-        const uint8_t char_cnt = std::min(static_cast<uint16_t>(chars_left), buff_char_capacity);
+        // The buffer has to know the width of what will be stored to correctly compute display buffer offsets
+        auto peek = reader.copy();
+        uint8_t char_cnt = 0;
+        uint16_t width = 0;
+        while (char_cnt < chars_left) {
+            const uint8_t char_w = pf->char_width(peek.getUtf8Char());
+            if (width + char_w > buff_width_capacity) {
+                break;
+            }
+            char_cnt++;
+            width += char_w;
+        }
+
         // Storing text in the display buffer
-        // It has to know how many chars will be stored to correctly compute display buffer offsets
+        uint16_t x = 0;
         for (uint8_t j = 0; j < char_cnt; j++) {
             const unichar c = reader.getUtf8Char();
             if (c == '\n' || c == '\0') {
                 bsod("Bad RectTextLayout");
             }
-            display::store_char_in_buffer(char_cnt, j, c, pf, clr_bg, clr_fg);
+            display::store_char_in_buffer(width, x, c, pf, clr_bg, clr_fg);
+            x += pf->char_width(c);
         }
         // Drawing from the buffer
         chars_left -= char_cnt;
-        display::draw_from_buffer(pt, char_cnt * pf->w, pf->h);
-        pt.x += char_cnt * pf->w;
+        display::draw_from_buffer(pt, width, pf->h);
+        pt.x += width;
     }
 }
 
@@ -85,25 +98,25 @@ void render_text_align(Rect16 rc, StringReaderUtf8 &reader, const Font f, Color 
     rc_pad.CutPadding(padding);
 
     auto reader_copy = reader.copy();
-    const RectTextLayout layout = RectTextLayout(reader_copy, rc_pad.Width() / font->w, rc_pad.Height() / font->h, flags.multiline);
+    const RectTextLayout layout = RectTextLayout(reader_copy, rc_pad.Width(), rc_pad.Height() / font->h, flags.multiline, char_width(font));
 
     debug_assert(flags.overflow == check_overflow::no || !layout.has_text_overflown());
 
-    if (layout.get_width_in_chars() == 0 || layout.get_height_in_chars() == 0) {
+    if (layout.get_width() == 0 || layout.get_height_in_chars() == 0) {
         if (fill_rect) {
             display::fill_rect(rc, clr_bg);
         }
         return;
     }
 
-    Rect16 rc_txt = Rect16(0, 0, layout.get_width_in_chars() * font->w, layout.get_height_in_chars() * font->h);
+    Rect16 rc_txt = Rect16(0, 0, layout.get_width(), layout.get_height_in_chars() * font->h);
     rc_txt.Align(rc_pad, flags.align);
     rc_pad = rc_txt.Intersection(rc_pad); ///  set padding rect to new value, crop the rectangle if the text is too long
 
     for (size_t i = 0; i < layout.get_height_in_chars(); ++i) {
         Rect16 rect_to_align(rc_pad.Left(), rc_pad.Top() + i * font->h, rc_pad.Width(), font->h);
         const size_t line_char_cnt = layout.get_line_characters(i);
-        Rect16 line_rect(0, 0, font->w * line_char_cnt, font->h);
+        Rect16 line_rect(0, 0, layout.get_line_width(i), font->h);
         line_rect.Align(rect_to_align, flags.align);
 
         // in front of line
