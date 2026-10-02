@@ -132,8 +132,6 @@ because the fonts no longer need the half-width katakana:
 | This fork (full translation) | 1,204,692 B |
 | This fork with *every* JIS X 0208 character (6,879, all 6,355 kanji) | 1,415,124 B (72 % of 1919 KB) |
 
-So "kanji does not fit into the printer" is not true for the 32-bit Prusa printers.
-
 **Layout.** Full-width characters advance by 16 px, Latin characters by the width of the font (9-13 px).
 Text layout, line buffers and scrolling labels measure in pixels instead of character cells.
 Japanese wraps between any two full-width characters, except before characters that must not start a
@@ -148,9 +146,9 @@ line (、。ー and small kana; 禁則処理).
 This was done with the help of an AI coding assistant (Claude, by Anthropic), directed and reviewed by the
 maintainer. In order:
 
-1. **Checked the claim that kanji does not fit.** Read the font pipeline and measured the stock MK4 build:
-   about 750 KB of the 1919 KB firmware flash is free, and a 16x16 1-bit kanji costs 34 B. Even every kanji
-   in JIS X 0208 fits (table above).
+1. **Measured the flash budget.** Read the font pipeline and measured the stock MK4 build: about 750 KB of
+   the 1919 KB firmware flash is free, and a 16x16 1-bit kanji costs 34 B, so even every kanji in JIS X 0208
+   fits (table above).
 2. **Built a prototype.** Added the Shinonome font to the font generator, made text layout and rendering
    handle full-width characters, and hand-translated a few screens.
 3. **Tested in the simulator.** Ran the firmware in [MINI404](https://github.com/vintagepc/MINI404),
