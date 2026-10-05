@@ -4311,7 +4311,7 @@ msgstr "ログを停止しました。USBメモリを安全に取り外せます
 
 #: src/feature/indx_dock_calibration/screen_dock_calibration.cpp:40
 msgid "Loosen Dock Bolts"
-msgstr "ドックボルトを緩める"
+msgstr "ドックボルトをゆるめる"
 
 #: src/feature/indx_dock_calibration/screen_dock_calibration.cpp:41
 msgid ""
@@ -4319,23 +4319,24 @@ msgid ""
 "\n"
 "When done, press Continue."
 msgstr ""
-"銀色のネジをそれぞれちょうど1回転緩めてください。\n"
+"銀色のネジをそれぞれちょうど1回転\n"
+"ゆるめてください。\n"
 "\n"
 "完了したら続行を押してください。"
 
 #: src/gui/wizard/selftest_frame_dock.cpp:188
 msgid "Loosen pins"
-msgstr "ピンを緩める"
+msgstr "ピンをゆるめる"
 
 #: src/gui/wizard/selftest_frame_dock.cpp:186
 msgid "Loosen screws"
-msgstr "ネジを緩める"
+msgstr "ネジをゆるめる"
 
 #: src/gui/wizard/selftest_frame_dock.cpp:72
 msgid ""
 "Loosen the two screws on the right side of the dock pillar (marked in "
 "orange) using the uni-wrench."
-msgstr "ユニレンチで、ドックピラーの右側にある2本のネジ(オレンジ色の印)を緩めてください。"
+msgstr "ユニレンチで、ドックピラーの右側にある2本のネジ(オレンジ色の印)をゆるめてください。"
 
 #: src/gui/MItem_tools.cpp:373
 msgid "Loud"
@@ -5440,13 +5441,13 @@ msgstr "チャンバの換気口を開く"
 msgid ""
 "Open the door and loosen the tensioning screw by about a half turn. Then "
 "leave the door open and confirm."
-msgstr "ドアを開け、テンションネジを約半回転緩めます。ドアを開けたまま確定してください。"
+msgstr "ドアを開け、テンションネジを約半回転ゆるめます。ドアを開けたまま確定してください。"
 
 #: src/feature/door_sensor_calibration/screen_door_sensor_calibration.cpp:28
 msgid ""
 "Open the door and loosen the tensioning screw by about a quarter turn. Then "
 "close the door and confirm."
-msgstr "ドアを開け、テンションネジを約4分の1回転緩めます。その後ドアを閉めて確定してください。"
+msgstr "ドアを開け、テンションネジを約4分の1回転ゆるめます。その後ドアを閉めて確定してください。"
 
 #: src/feature/door_sensor_calibration/screen_door_sensor_calibration.cpp:25
 msgid ""
@@ -7428,7 +7429,7 @@ msgid ""
 msgstr ""
 "校正中のドックは下部が点灯し、前面が白く点滅しています。\n"
 "\n"
-"ドックピンを緩めて取り外してください。"
+"ドックピンをゆるめて取り外してください。"
 
 #. Quick user can
 #. 1:15 - Home and install pin
@@ -8874,7 +8875,7 @@ msgstr "取り外し"
 
 #: src/gui/screen/selftest/screen_manual_belt_tuning.cpp:50
 msgid "loosen"
-msgstr "緩める"
+msgstr "ゆるめる"
 
 #: src/gui/MItem_tools.cpp:697
 msgid "open"
