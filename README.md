@@ -109,17 +109,19 @@ MINI では Prusa の公式ファームウェア (カタカナ表示) をその�
    [CORE One L, CORE One, MK4/S, MK3.9/S, MK3.5/S](https://help.prusa3d.com/article/flashing-custom-firmware-core-one-l-core-one-mk4-s-mk3-9-s-mk3-5-s_814967) or [XL](https://help.prusa3d.com/article/imposter-fake-signature-17606-xl_399880). This is permanent.
 2. Copy the `.bbf` file for your printer to the root of a USB drive, insert it and restart the printer.
    Confirm the installation.
-3. Select 日本語 in *Settings → Language* (設定 → 言語).
+3. Select 日本語 in *Settings → Language & Time → Language* (設定 → 言語と時刻 → 言語).
+   It is near the end of the list, after Polski.
 
 To go back, flash an official firmware from [prusa3d.com](https://www.prusa3d.com/drivers/) the same way.
 The version shown on the printer ends with `-jp.N`, for example `6.10.1-jp.1`.
 
 ## Status / 状況
 
-- Tested in the MINI404 simulator on the MK4 only. The other builds compile, but have not run on real
-  hardware yet - reports welcome.
+- Tested in the MINI404 simulator on the MK4, and reported working on a real CORE One INDX. The other
+  builds compile, but have not run on real hardware yet - reports welcome.
 - The translation was drafted with AI assistance against a shared glossary and checked automatically
-  (format strings, line structure, character set, width). A review by native speakers is still needed.
+  (format strings, line structure, character set, width). Thanks to Mataro ([@mataro37](https://x.com/mataro37))
+  for proofreading it on a CORE One INDX; a full review by native speakers is still welcome.
 - About 125 strings are still wider than their English original and may scroll or be cut off.
 
 ## How it works
