@@ -80,7 +80,7 @@ Rect16 WiSpin::getUnitRect(Rect16 extension_rect) const {
         const auto unit = config_.unit_str();
         const unichar uchar = unit.getFirstUtf8Char();
         size_t half_space_padding = (uchar == 0 || uchar == 0xB0) ? 0 : unit__half_space_padding;
-        Rect16::Width_t unit_width = unit.computeNumUtf8Chars() * width(GuiDefaults::FontMenuSpecial) + Rect16::Width_t(half_space_padding);
+        Rect16::Width_t unit_width = calculate_text_size(unit, GuiDefaults::FontMenuSpecial, is_multiline::no).w + Rect16::Width_t(half_space_padding);
         unit_width = unit_width + GuiDefaults::MenuPaddingSpecial.left + GuiDefaults::MenuPaddingSpecial.right;
         ret = unit_width;
     } else {
@@ -106,7 +106,7 @@ void WiSpin::printExtension(Rect16 extension_rect, Color color_text, Color color
     unichar ch = spin_txt.getFirstUtf8Char();
     if (ch > 57 || (ch < 48 && ch != '-' && ch != '+')) { // first character is not a number (or +-). This is necessary because "Off" is translated
         uint16_t curr_width = extension_rect.Width();
-        uint16_t off_opt_width = width(TheFont) * spin_txt.computeNumUtf8Chars() + extension_padding.left + extension_padding.right;
+        uint16_t off_opt_width = calculate_text_size(spin_txt, TheFont, is_multiline::no).w + extension_padding.left + extension_padding.right;
         if (curr_width < off_opt_width) {
             extension_rect -= Rect16::Left_t(off_opt_width - curr_width);
             extension_rect = Rect16::Width_t(off_opt_width);

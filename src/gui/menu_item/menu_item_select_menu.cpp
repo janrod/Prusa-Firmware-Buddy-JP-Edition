@@ -5,6 +5,7 @@
 #include <window_menu_virtual.hpp>
 #include <window_header.hpp>
 #include <WindowMenuItems.hpp>
+#include <display_helper.h>
 
 namespace {
 class DialogItem final : public IWindowMenuItem {
@@ -140,7 +141,7 @@ void MenuItemSelectMenu::force_set_current_item(int set) {
 
     current_item_ = set;
     value_ = build_item_text(set, value_params_);
-    extension_width = resource_font(value_font)->w * (value_.computeNumUtf8Chars() + (GuiDefaults::MenuSwitchHasBrackets ? 2 : 0));
+    extension_width = calculate_text_size(value_, value_font, is_multiline::no).w + (GuiDefaults::MenuSwitchHasBrackets ? 2 * resource_font(value_font)->w : 0);
 
     // When we do only InValidateExtension(), we only 'delete' text with new extension_width
     // when new width is shorter, we leave part of the old text on screen, so that is why Invalidate()

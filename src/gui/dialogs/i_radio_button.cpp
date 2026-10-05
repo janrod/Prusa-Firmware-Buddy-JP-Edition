@@ -8,6 +8,7 @@
 #include <client_response_texts.hpp>
 #include <marlin_client.hpp>
 #include <gui/gui_utils.hpp>
+#include <display_helper.h>
 
 #include <algorithm> //find
 
@@ -249,7 +250,7 @@ IRadioButton::Layout IRadioButton::getNormalBtnRects(size_t btn_count) const {
 
     for (size_t index = 0; index < btn_count; index++) {
         string_view_utf8 txt = _(get_response_text(responseFromIndex(index)));
-        ret.text_widths[index] = width(ButtonFont) * static_cast<uint8_t>(txt.computeNumUtf8Chars());
+        ret.text_widths[index] = std::min<uint16_t>(calculate_text_size(txt, ButtonFont, is_multiline::no).w, UINT8_MAX);
     }
     GetRect().HorizontalSplit(
         ret.splits,
