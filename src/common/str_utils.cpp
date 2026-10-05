@@ -52,6 +52,16 @@ bool can_start_line(unichar c) {
         return true;
     }
 }
+
+bool is_hiragana(unichar c) {
+    return c >= 0x3041 && c <= 0x309F;
+}
+
+/// A phrase (bunsetsu) ends with hiragana - a particle or an inflection. Wrapping where hiragana
+/// meets kanji, katakana or Latin text keeps words such as 取り外す or 1回転 together.
+bool is_phrase_start(unichar previous, unichar c) {
+    return is_hiragana(previous) && !is_hiragana(c) && c != ' ' && can_start_line(c) && (is_full_width(c) || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'));
+}
 } // namespace
 
 RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uint16_t max_rows, is_multiline multiline, CharWidth char_width) {
@@ -65,7 +75,11 @@ RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uin
     }
 
     std::optional<Position> split = std::nullopt;
+    // Last wrap at the end of a phrase or after a comma or full stop, preferred over a wrap
+    // anywhere in the text. A later space clears it, so that the wrap does not move back past it.
+    std::optional<Position> phrase_split = std::nullopt;
     unichar c = 0;
+    unichar previous = 0;
     Position line;
 
     while ((c = reader.getUtf8Char()) != 0) {
@@ -82,6 +96,7 @@ RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uin
 
             line = {};
             split = std::nullopt;
+            phrase_split = std::nullopt;
             break;
 
         case ' ': // remember space position
@@ -92,13 +107,24 @@ RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uin
 
             split = Position { line.chars + 1, line.width + c_width };
             skip_char[current_line] = true;
+            phrase_split = std::nullopt;
             [[fallthrough]];
 
         default:
+            if (phrase_split && phrase_split->chars == line.chars && !can_start_line(c)) {
+                phrase_split = std::nullopt;
+            }
+
             // A wrap at a space right before this character is kept, so that the space is skipped
-            if (is_full_width(c) && line.chars > 0 && can_start_line(c) && !(split && split->chars == line.chars)) {
-                split = line;
-                skip_char[current_line] = false;
+            if (line.chars > 0 && !(split && split->chars == line.chars)) {
+                if (is_phrase_start(previous, c)) {
+                    split = line;
+                    skip_char[current_line] = false;
+                    phrase_split = line;
+                } else if (is_full_width(c) && can_start_line(c)) {
+                    split = line;
+                    skip_char[current_line] = false;
+                }
             }
 
             line.chars++;
@@ -117,6 +143,10 @@ RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uin
                     split = Position { line.chars - 1, line.width - c_width };
                     overflow = true;
                     skip_char[current_line] = false;
+                } else if (phrase_split && phrase_split->width * 2 >= max_width) {
+                    // Unless that leaves the line less than half full
+                    split = phrase_split;
+                    skip_char[current_line] = false;
                 }
 
                 // It does not count newline char and space before wrapped word
@@ -130,6 +160,7 @@ RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uin
                 const int skipped_width = skip_char[current_line] ? char_width(' ') : 0;
                 set_current_line({ split->chars - skipped_chars, split->width - skipped_width });
                 split = std::nullopt;
+                phrase_split = std::nullopt;
 
                 if (!new_line(max_rows)) {
                     return;
@@ -141,8 +172,10 @@ RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uin
             if (c == 0x3001 || c == 0x3002) {
                 split = line;
                 skip_char[current_line] = false;
+                phrase_split = line;
             }
         }
+        previous = c;
     }
 
     skip_char[current_line] = false;

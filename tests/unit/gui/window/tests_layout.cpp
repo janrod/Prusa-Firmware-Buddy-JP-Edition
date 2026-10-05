@@ -492,16 +492,16 @@ TEST_CASE("RectTextLayout: input misalignment", "[layout]") {
 
 TEST_CASE("RextTextLayout: Word wrapping japanese", "[layout]") {
 
-    // Japanese wraps between any two characters, not only after a comma or full stop; a line
+    // Japanese wraps between any two characters, preferably after a comma or full stop; a line
     // never starts with the prolonged sound mark, a small kana, a comma or a full stop
     SECTION("Japanese comma & dot: text wrap #1") {
         StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH("ロードセルキャリ。プリンタロードセルキャリ、ードセルキャリロードセルキャリ"));
         auto layout = RectTextLayout(reader, 15, 3, is_multiline::yes);
         CHECK(layout.get_height_in_chars() == 3);
         CHECK(layout.get_width_in_chars() == 15);
-        CHECK(layout.get_line_characters(0) == 15); // ロードセルキャリ。プリンタロー
-        CHECK(layout.get_line_characters(1) == 14); // ドセルキャリ、ードセルキャリ - ロ goes along with the ー after it
-        CHECK(layout.get_line_characters(2) == 8); // ロードセルキャリ
+        CHECK(layout.get_line_characters(0) == 9); // ロードセルキャリ。 - a wrap after a full stop is preferred
+        CHECK(layout.get_line_characters(1) == 15); // プリンタロードセルキャリ、ード - not after the comma, ー must not start a line
+        CHECK(layout.get_line_characters(2) == 13); // セルキャリロードセルキャリ
         CHECK(layout.has_text_overflown() == false);
     }
 
@@ -883,6 +883,27 @@ TEST_CASE("RectTextLayout: full-width characters", "[layout]") {
         REQUIRE(layout.get_line_characters(0) == 3);
         REQUIRE(layout.get_line_width(0) == 48);
         REQUIRE(layout.has_text_overflown() == true);
+    }
+
+    SECTION("Prefers a wrap at the end of a phrase") {
+        StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH("銀色のネジをそれぞれちょうど1回転ゆるめてください。"));
+        auto layout = RectTextLayout(reader, 256, 3, is_multiline::yes, mixed_width);
+        REQUIRE(layout.get_height_in_chars() == 2);
+        REQUIRE(layout.get_line_characters(0) == 14); // 銀色のネジをそれぞれちょうど
+        REQUIRE(layout.get_line_width(0) == 14 * 16);
+        REQUIRE(layout.get_skip_char_on_line(0) == false);
+        REQUIRE(layout.get_line_characters(1) == 12); // 1回転ゆるめてください。
+        REQUIRE(layout.get_line_width(1) == 9 + 11 * 16);
+        REQUIRE(layout.has_text_overflown() == false);
+    }
+
+    SECTION("Wraps anywhere when the end of a phrase would leave the line less than half full") {
+        StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH("のロードセル"));
+        auto layout = RectTextLayout(reader, 64, 3, is_multiline::yes, mixed_width);
+        REQUIRE(layout.get_height_in_chars() == 2);
+        REQUIRE(layout.get_line_characters(0) == 4); // のロード
+        REQUIRE(layout.get_line_characters(1) == 2); // セル
+        REQUIRE(layout.has_text_overflown() == false);
     }
 
     SECTION("A character wider than the whole line stops the layout") {
