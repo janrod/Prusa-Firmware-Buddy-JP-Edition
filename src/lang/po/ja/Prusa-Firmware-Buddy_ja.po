@@ -3633,7 +3633,7 @@ msgstr "高温"
 
 #: src/gui/ScreenPrintingModel.cpp:55
 msgid "Home"
-msgstr "原点"
+msgstr "ホーム"
 
 #. //MSG_PROGRESS_RETRACT_FINDA c=20
 #: src/mmu2/mmu2_progress_converter.cpp:31
@@ -5949,7 +5949,7 @@ msgstr "プリセット"
 
 #: src/gui/screen/screen_filament_change.cpp:91
 msgid "Press CONTINUE and push filament into MMU."
-msgstr "CONTINUEを押し、フィラメントをMMUに押し込んでください。"
+msgstr "続行を押し、フィラメントをMMUに押し込んでください。"
 
 #: src/gui/screen_menu_selftest_snake.cpp:358
 msgid "Previous Calibrations & Tests are not all done. Continue anyway?"
@@ -5995,7 +5995,7 @@ msgstr "印刷速度"
 
 #: src/gui/screen_menu_statistics.cpp:201
 msgid "Print Statistics"
-msgstr "印刷統計"
+msgstr "印刷履歴"
 
 #. First line - Print Time
 #: src/gui/gcode_description.cpp:146 src/gui/screen_menu_statistics.cpp:134
@@ -6209,7 +6209,7 @@ msgstr ""
 msgid ""
 "Push the filament into the extruder and then, while still pushing, press "
 "CONTINUE."
-msgstr "フィラメントを押出機に押し込み、押したままCONTINUEを押してください。"
+msgstr "フィラメントを押し込み、そのまま続行を押してください。"
 
 #: src/gui/screen/selftest/screen_selftest_fsensors.cpp:196
 msgid ""
@@ -6666,7 +6666,7 @@ msgstr ""
 
 #: src/gui/screen_menu_statistics.cpp:195
 msgid "STATISTICS"
-msgstr "統計"
+msgstr "印刷履歴"
 
 #: tmp_error_headers/error_list.hpp:71
 msgid "STEEL SHEET NOT DETECTED"
@@ -6970,7 +6970,7 @@ msgstr "スタック溢れ"
 
 #: src/feature/factory_reset/factory_reset.hpp:45
 msgid "Statistics"
-msgstr "統計"
+msgstr "印刷履歴"
 
 #: src/gui/screen_menu_connect.hpp:24 src/gui/MItem_network.hpp:44
 msgid "Status"
