@@ -15,6 +15,11 @@
 #include "cmath_ext.h"
 #include <bsod/bsod.h>
 
+namespace {
+/// Gap between lines of full-width characters, in pixels
+constexpr uint16_t WIDE_LINE_GAP = 4;
+} // namespace
+
 /// Fill space from [@top, @left] corner to the end of @rc with height @h
 /// If @h is too high, it will be cropped so nothing is drawn outside of the @rc but
 /// @top and @left are not checked whether they are in @rc
@@ -117,12 +122,23 @@ void render_text_align(Rect16 rc, StringReaderUtf8 &reader, const Font f, Color 
         return;
     }
 
-    Rect16 rc_txt = Rect16(0, 0, layout.get_width(), layout.get_height_in_chars() * font->h);
+    // Full-width glyphs fill the whole height of the smaller fonts, so their lines would touch.
+    // Space them out where the rectangle has room for it.
+    const uint16_t line_count = layout.get_height_in_chars();
+    uint16_t line_pitch = font->h;
+    if (layout.has_full_width() && line_count > 1) {
+        const uint16_t spaced_pitch = std::max<uint16_t>(font->h, font_data::WIDE_GLYPH_SIZE + WIDE_LINE_GAP);
+        if ((line_count - 1) * spaced_pitch + font->h <= rc_pad.Height()) {
+            line_pitch = spaced_pitch;
+        }
+    }
+
+    Rect16 rc_txt = Rect16(0, 0, layout.get_width(), (line_count - 1) * line_pitch + font->h);
     rc_txt.Align(rc_pad, flags.align);
     rc_pad = rc_txt.Intersection(rc_pad); ///  set padding rect to new value, crop the rectangle if the text is too long
 
     for (size_t i = 0; i < layout.get_height_in_chars(); ++i) {
-        Rect16 rect_to_align(rc_pad.Left(), rc_pad.Top() + i * font->h, rc_pad.Width(), font->h);
+        Rect16 rect_to_align(rc_pad.Left(), rc_pad.Top() + i * line_pitch, rc_pad.Width(), font->h);
         const size_t line_char_cnt = layout.get_line_characters(i);
         Rect16 line_rect(0, 0, layout.get_line_width(i), font->h);
         line_rect.Align(rect_to_align, flags.align);
@@ -139,6 +155,10 @@ void render_text_align(Rect16 rc, StringReaderUtf8 &reader, const Font f, Color 
         }
 
         render_line(reader, line_char_cnt, line_rect, font, clr_bg, clr_fg);
+
+        if (line_pitch > font->h && i + 1 < line_count) {
+            display::fill_rect(Rect16(rc_pad.Left(), rect_to_align.Top() + font->h, rc_pad.Width(), line_pitch - font->h), clr_bg);
+        }
 
         // skip character, that splits the lines (usually '\n' || ' ')
         if (layout.get_skip_char_on_line(i)) {

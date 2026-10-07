@@ -99,6 +99,9 @@ public:
 
     bool has_text_overflown() const { return overflow; }
 
+    /// Whether the laid out text has a full-width (Japanese) character
+    bool has_full_width() const { return full_width; }
+
     uint8_t get_line_characters(uint8_t line) const { return data[line]; }
 
     /// Width of the line, in the units of char_width
@@ -125,6 +128,7 @@ private:
     uint8_t current_line = 0;
     uint16_t longest_width = 0;
     bool overflow = false;
+    bool full_width = false;
 
     void set_current_line(Position line);
 

@@ -111,6 +111,8 @@ RectTextLayout::RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uin
             [[fallthrough]];
 
         default:
+            full_width |= is_full_width(c);
+
             if (phrase_split && phrase_split->chars == line.chars && !can_start_line(c)) {
                 phrase_split = std::nullopt;
             }

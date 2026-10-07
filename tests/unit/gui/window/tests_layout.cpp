@@ -885,6 +885,13 @@ TEST_CASE("RectTextLayout: full-width characters", "[layout]") {
         REQUIRE(layout.has_text_overflown() == true);
     }
 
+    SECTION("Reports full-width characters") {
+        StringReaderUtf8 latin_reader(string_view_utf8::MakeCPUFLASH("AB CD"));
+        REQUIRE(RectTextLayout(latin_reader, 100, 1, is_multiline::no, mixed_width).has_full_width() == false);
+        StringReaderUtf8 mixed_reader(string_view_utf8::MakeCPUFLASH("AB日本"));
+        REQUIRE(RectTextLayout(mixed_reader, 100, 1, is_multiline::no, mixed_width).has_full_width() == true);
+    }
+
     SECTION("Prefers a wrap at the end of a phrase") {
         StringReaderUtf8 reader(string_view_utf8::MakeCPUFLASH("銀色のネジをそれぞれちょうど1回転ゆるめてください。"));
         auto layout = RectTextLayout(reader, 256, 3, is_multiline::yes, mixed_width);
