@@ -14,6 +14,7 @@
 #include <filament_list.hpp>
 #include <option/has_toolchanger.h>
 #include <bsod/bsod.h>
+#include <gui/menu_item/menu_item_color.hpp>
 
 using namespace multi_filament_change;
 
@@ -24,6 +25,10 @@ MI_ActionSelect::MI_ActionSelect(uint8_t tool_ix)
     has_filament_loaded = (config_store().get_filament_type(tool) != FilamentType::none);
     set_is_hidden(!tool.is_enabled());
     SetLabel(tool.display_name(label_params));
+
+    // Emit on_item_selected even when selecting the same item
+    // the user might want to change to a different color
+    deduplicate_on_item_selected_ = false;
 }
 
 MI_ActionSelect::MI_ActionSelect(SetAllToMode)
@@ -78,7 +83,7 @@ int MI_ActionSelect::item_count() const {
     return index_mapping.total_item_count();
 }
 
-string_view_utf8 MI_ActionSelect::build_item_text(int index, MenuItemSelectMenu::ItemTextParams &params) const {
+string_view_utf8 MI_ActionSelect::build_item_text(int index, StringViewUtf8ParamBase &params) const {
     const auto mapping = index_mapping.from_index(index);
     switch (mapping.item) {
 
@@ -105,12 +110,18 @@ bool MI_ActionSelect::on_item_selected(const OnItemSelectedArgs &args) {
         auto new_config = menu.configuration();
 
         // Skip reminders here, show them only on the final screen confirmation
-        if (!gui_config_confirm_incompatibilities(new_config_item, AllTools {}, Response::Cancel, buddy::compatibility_checks::CompatibilityLevel::compatible_with_reminder)) {
+        if (!new_config_item.gui_confirm_incompatibilities(AllTools {}, Response::Cancel, buddy::compatibility_checks::CompatibilityLevel::compatible_with_reminder)) {
             return false;
         }
 
         for (auto tool : VirtualToolIndex::all().skip_all_disabled()) {
-            auto &config_item = new_config[tool];
+            auto &config_item = new_config.items[tool];
+
+            // Don't set to unload tools that are already unloaded
+            if (new_config_item.action == Action::unload && !FilamentType::for_tool(tool)) {
+                config_item.action = Action::keep;
+                continue;
+            }
 
             // Keep the color
             const auto orig_color = config_item.color;
@@ -120,15 +131,34 @@ bool MI_ActionSelect::on_item_selected(const OnItemSelectedArgs &args) {
 
         menu.set_configuration(new_config);
 
-    } else {
-        // Skip reminders here, show them only on the final screen confirmation
-        if (!gui_config_confirm_incompatibilities(new_config_item, std::get<VirtualToolIndex>(tool_filter_), Response::Cancel, buddy::compatibility_checks::CompatibilityLevel::compatible_with_reminder)) {
+        // Just let current_item to be updated by the parent, will be picked up by the owning menu
+        return true;
+    }
+
+    // Skip reminders here, show them only on the final screen confirmation
+    if (args.old_index != args.new_index
+        && !new_config_item.gui_confirm_incompatibilities(std::get<VirtualToolIndex>(tool_filter_), Response::Cancel, buddy::compatibility_checks::CompatibilityLevel::compatible_with_reminder) //
+    ) {
+        return false;
+    }
+
+    if (new_config_item.action == Action::change && config_store().should_load_ask_for_filament_color()) {
+        const auto prev_focus = args.menu.focused_item_index();
+
+        auto new_color = MenuItemColor::color_prompt_dialog(_("FILAMENT COLOR"), color);
+
+        // Opening a dialog with a menu screws up focus for the current menu - we need to restore it
+        args.menu.move_focus_to_index(prev_focus);
+
+        if (!new_color.has_value()) {
+            // User cancelled the selection -> don't even change the action
             return false;
         }
 
-        // Just let current_item to be updated by the parent, will be picked up by the owning menu
+        color = *new_color;
     }
 
+    // Just let current_item to be updated by the parent, will be picked up by the owning menu
     return true;
 }
 
@@ -147,7 +177,7 @@ MenuMultiFilamentChange::MenuMultiFilamentChange(window_t *parent, const Rect16 
 MultiFilamentChangeConfig MenuMultiFilamentChange::configuration() const {
     return [&]<size_t... ix>(std::index_sequence<ix...>) {
         return MultiFilamentChangeConfig {
-            ConfigItem { container.Item<WithConstructorArgs<MI_ActionSelect, ix>>().config() }...
+            .items { ConfigItem { container.Item<WithConstructorArgs<MI_ActionSelect, ix>>().config() }... },
         };
     }(std::make_index_sequence<VirtualToolIndex::count>());
 }
@@ -155,7 +185,7 @@ MultiFilamentChangeConfig MenuMultiFilamentChange::configuration() const {
 void MenuMultiFilamentChange::set_configuration(const MultiFilamentChangeConfig &set) {
     // Set the correct indexes for the actions
     stdext::visit_sequence<VirtualToolIndex::count>([&]<size_t ix>() {
-        container.Item<WithConstructorArgs<MI_ActionSelect, ix>>().set_config(set[VirtualToolIndex::from_raw(ix)]);
+        container.Item<WithConstructorArgs<MI_ActionSelect, ix>>().set_config(set.items[VirtualToolIndex::from_raw(ix)]);
     });
 }
 
@@ -170,9 +200,9 @@ void MenuMultiFilamentChange::windowEvent(window_t *sender, GUI_event_t event, v
             container.Item<WithConstructorArgs<MI_ActionSelect, MI_ActionSelect::SetAllToMode {}>>().Click(*this);
 
             const auto config = configuration();
-            if (std::ranges::all_of(config, [](const ConfigItem &item) { return item.action == Action::keep; })) {
+            if (std::ranges::all_of(config.items, [](const ConfigItem &item) { return item.action == Action::keep; })) {
                 // Cancelled or "Don't change" picked - nothing to apply, return to the parent menu
-                Screens::Access()->Close();
+                Screens::Access()->close_screen();
                 return;
             }
 
@@ -184,17 +214,17 @@ void MenuMultiFilamentChange::windowEvent(window_t *sender, GUI_event_t event, v
 
     case GUI_event_t::CHILD_CLICK: {
         if (carry_out_changes()) {
-            Screens::Access()->Close();
+            Screens::Access()->close_screen();
         }
         return;
     }
 
     case GUI_event_t::MEDIA: {
         const MediaState_t media_state = MediaState_t(reinterpret_cast<int>(param));
-        if (media_state == MediaState_t::removed || media_state == MediaState_t::error) {
+        if (media_state == MediaState_t::removed) {
             // USB was removed
             if (close_screen_on_media_disconnect_) {
-                Screens::Access()->Close();
+                Screens::Access()->close_screen();
                 return;
             }
         }
@@ -212,12 +242,12 @@ bool MenuMultiFilamentChange::carry_out_changes() {
     // Note: This potentially duplicates warnings raised by manually changing the items
     // But the config could have been pre-filled, so better to sometimes warn twice than sometimes not at all
     const auto config = configuration();
-    if (!gui_config_confirm_incompatibilities(config, Response::Cancel)) {
+    if (!config.gui_confirm_incompatibilities(Response::Cancel)) {
         return false;
     }
 
     ArrayStringBuilder<MAX_CMD_SIZE> sb;
-    multi_filament_change::config_to_gcode(config, sb);
+    config.to_gcode(sb);
     marlin_client::gcode(sb.str());
     return true;
 }
@@ -234,7 +264,7 @@ ScreenChangeAllFilaments::ScreenChangeAllFilaments()
 
 ScreenChangeAllFilaments::ScreenChangeAllFilaments(SetupForPrint)
     : ScreenChangeAllFilaments {} {
-    menu.menu.set_configuration(multi_filament_change::config_from_current_print_setup());
+    menu.menu.set_configuration(multi_filament_change::Config::from_current_print_setup());
     menu.menu.close_screen_on_media_disconnect_ = true;
 }
 
@@ -242,9 +272,7 @@ ScreenChangeAllFilaments::ScreenChangeAllFilaments(SetupUnloadAll)
     : ScreenChangeAllFilaments {} {
 
     multi_filament_change::Config config;
-    for (auto tool : VirtualToolIndex::all().skip_all_disabled()) {
-        config[tool].action = multi_filament_change::Action::unload;
-    }
+    config.set_all_loaded_to_unload();
     menu.menu.set_configuration(config);
 
     // Preselect apply-changes, all should be clear

@@ -12,7 +12,7 @@
 
 /// Result of from_chars_light
 struct from_chars_light_result {
-    const char *ptr; // pointer to last character processed
+    const char *ptr; // pointer to the character immediately following the last character processed
     std::errc ec; // error code
 };
 
@@ -85,6 +85,12 @@ struct CharWidth {
 ///
 /// numbers of characters in lines
 class RectTextLayout {
+
+public:
+    /// Computes how many lines the provided text wraps into
+    /// \param max_width width of the column, in the units of char_width
+    static uint16_t compute_line_count(const string_view_utf8 &text, uint16_t max_width, CharWidth char_width = {});
+
 public:
     /// \param max_width width of the rectangle, in the units of char_width
     RectTextLayout(StringReaderUtf8 &reader, uint16_t max_width, uint16_t max_rows, is_multiline multiline, CharWidth char_width = {});

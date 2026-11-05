@@ -1,5 +1,8 @@
 #include "download.hpp"
 #include "files.hpp"
+#include <logging/log.hpp>
+
+LOG_COMPONENT_REF(transfers);
 
 #include <freertos/binary_semaphore.hpp>
 #include <common/http/resp_parser.h>
@@ -22,6 +25,7 @@
 #include <lwip/dns.h>
 #include <config_store/store_instance.hpp>
 #include <bsod/bsod.h>
+#include <option/websocket.h>
 
 using automata::ExecutionControl;
 using http::ContentEncryptionMode;
@@ -69,6 +73,7 @@ constexpr uint32_t INLINE_SEGMENT_SIZE = 512 * 512;
 
 namespace transfers {
 
+#if !WEBSOCKET()
 class Download::Async {
 public:
     static constexpr uint32_t REQUEST_TIMEOUT = 10000; // 10 seconds for the whole request (headers, not body)
@@ -121,7 +126,12 @@ public:
             bool success = (transfer_rest == 0);
             if (success) {
                 success = owner->destination->sync();
-            } // else - we potentially have an incomplete segment and we don't want to store that one.
+                if (!success) {
+                    log_error(transfers, "sync fail");
+                }
+            } else {
+                log_error(transfers, "splice incomplete, %zu left", transfer_rest);
+            }
             owner->done(success ? DownloadStep::Finished : DownloadStep::FailedNetwork);
             // Not generating response, we are the client here.
             return nullopt;
@@ -146,6 +156,10 @@ public:
         auto &request = get<Request>(phase_payload);
         strlcpy(request.hostname, hostname, sizeof request.hostname);
         strlcpy(request.path, path, sizeof request.path);
+        if (!this->destination->seek(start_range)) {
+            last_status = DownloadStep::FailedStorage;
+            phase = Phase::Done;
+        }
     }
     Async(const Async &other) = delete;
     Async(Async &&oter) = delete;
@@ -235,6 +249,7 @@ public:
         auto status = static_cast<Status>(resp.status_code);
 
         if (status != Status::Ok && status != Status::PartialContent) {
+            log_error(transfers, "HTTP %d", resp.status_code);
             done(DownloadStep::FailedNetwork);
             return ERR_ABRT;
         }
@@ -259,13 +274,13 @@ public:
         size_t len = resp.content_length.value();
         phase_payload.emplace<Splice>(this, len);
         phase = Phase::Body;
-#ifdef UNITTESTS
+    #ifdef UNITTESTS
         debug_assert(0); // Unimplemented here, see the note about dependency hell
-#else
+    #else
         tcp_pcb *c = conn;
         conn = nullptr;
         httpd_instance()->inject_transfer(c, data.release(), position, &get<Splice>(phase_payload), len);
-#endif
+    #endif
 
         return ERR_OK;
     }
@@ -274,6 +289,7 @@ public:
         if (data_raw == nullptr) {
             // Close by the other end (unexpected one, we still don't have all
             // the headers).
+            log_error(transfers, "remote close, phase %d", (int)phase);
             done(DownloadStep::FailedNetwork);
             return ERR_ABRT;
         }
@@ -328,6 +344,7 @@ public:
 
     void err() {
         // The connection is already closed for us, so remove it from here so done doesn't get rid of it.
+        log_error(transfers, "TCP err, phase %d", (int)phase);
         conn = nullptr;
         done(DownloadStep::FailedNetwork);
     }
@@ -340,10 +357,10 @@ public:
         phase = Phase::Connecting;
         debug_assert(holds_alternative<Request>(phase_payload));
         auto &request = get<Request>(phase_payload);
-#ifndef UNITTESTS
+    #ifndef UNITTESTS
         // Hack to make it compile during tests. Not actually executed.
         conn = altcp_new_ip_type(altcp_tcp_alloc, IP_GET_TYPE(request.ip));
-#endif
+    #endif
 
         if (conn == nullptr) {
             done(DownloadStep::FailedNetwork);
@@ -383,6 +400,10 @@ public:
 
     // Start it inside the tcpip thread.
     void start() {
+        if (phase == Phase::Done) {
+            // Failed at construction (destination seek)
+            return;
+        }
         request_started = ticks_ms();
         debug_assert(holds_alternative<Request>(phase_payload));
         auto &request = get<Request>(phase_payload);
@@ -455,6 +476,7 @@ void Download::AsyncDeleter::operator()(Async *a) {
         delete a;
     }
 }
+#endif
 
 void Download::Request::set_transfer_id(TransferId id) {
     if (auto *in = get_if<Inline>(&data); in != nullptr) {
@@ -464,20 +486,22 @@ void Download::Request::set_transfer_id(TransferId id) {
 }
 
 Download::Download(const Request &request, PartialFile::Ptr destination, uint32_t start_range, optional<uint32_t> end_range) {
+#if !WEBSOCKET()
     if (const auto *encrypted = get_if<Request::Encrypted>(&request.data); encrypted) {
         debug_assert(encrypted->encryption);
         size_t file_size = encrypted->encryption->orig_size;
         auto decryptor = make_unique<Decryptor>(encrypted->encryption->key, encrypted->encryption->nonce, start_range, file_size - start_range);
         debug_assert(destination);
 
-        destination->seek(start_range);
         AsyncPtr async(new Async(encrypted->host, encrypted->port, encrypted->url_path, move(destination), move(decryptor), start_range, end_range));
         Async *async_raw = async.get();
         engine = std::move(async);
         tcpip_callback_nofail(Async::start_wrapped, async_raw);
-    } else {
+    } else
+#endif
+    {
         const auto &in = get<Request::Inline>(request.data);
-        destination->seek(start_range);
+        const bool seek_ok = destination->seek(start_range);
         InlinePtr in_ptr(new Inline {
             in.team_id,
             // This is just a safety feature - making sure we don't mix chunks
@@ -492,23 +516,27 @@ Download::Download(const Request &request, PartialFile::Ptr destination, uint32_
             destination,
         });
         strlcpy(in_ptr->hash, in.hash, sizeof in_ptr->hash);
+        if (!seek_ok) {
+            in_ptr->status = DownloadStep::FailedStorage;
+        }
         engine = std::move(in_ptr);
         // We do _nothing_ in here, in this case, the Download is kind of "passive"
     }
 }
 
 DownloadStep Download::step() {
+#if !WEBSOCKET()
     if (auto *async = get_if<AsyncPtr>(&engine); async != nullptr) {
         return (*async)->status();
+    }
+#endif
+    const auto &in = get<InlinePtr>(engine);
+    if (in->status != DownloadStep::Continue) {
+        return in->status;
+    } else if (in->start > in->end /* End is inclusive */) {
+        return DownloadStep::Finished;
     } else {
-        const auto &in = get<InlinePtr>(engine);
-        if (in->status != DownloadStep::Continue) {
-            return in->status;
-        } else if (in->start > in->end /* End is inclusive */) {
-            return DownloadStep::Finished;
-        } else {
-            return DownloadStep::Continue;
-        }
+        return DownloadStep::Continue;
     }
 }
 
@@ -517,11 +545,7 @@ uint32_t Download::file_size() const {
 }
 
 PartialFile::Ptr Download::get_partial_file() const {
-    if (auto *async = get_if<AsyncPtr>(&engine); async != nullptr) {
-        return (*async)->destination;
-    } else {
-        return get<InlinePtr>(engine)->destination;
-    }
+    return std::visit([](const auto &e) { return e->destination; }, engine);
 }
 
 optional<Download::InlineRequest> Download::inline_request() {

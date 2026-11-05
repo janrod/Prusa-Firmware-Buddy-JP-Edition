@@ -138,7 +138,7 @@ Rect16::Width_t WiSpin::calculateExtensionWidth(const NumericInputConfig &config
         if (GuiDefaults::MenuUseFixedUnitWidth) {
             return GuiDefaults::MenuUseFixedUnitWidth;
         }
-        ret += unit_len * width(GuiDefaults::FontMenuSpecial);
+        ret += calculate_text_size(unit, GuiDefaults::FontMenuSpecial, is_multiline::no).w;
         ret += GuiDefaults::MenuPaddingSpecial.left + GuiDefaults::MenuPaddingSpecial.right;
         const unichar uchar = unit.getFirstUtf8Char();
         half_space = uchar == '\xB0' ? 0 : unit__half_space_padding;

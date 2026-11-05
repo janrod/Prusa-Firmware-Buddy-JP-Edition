@@ -12,7 +12,7 @@
 >
 > **This is unofficial community firmware. It is not made, tested, endorsed or supported by Prusa Research.**
 > It is an independent fork of the open-source
-> [prusa3d/Prusa-Firmware-Buddy](https://github.com/prusa3d/Prusa-Firmware-Buddy) (6.10.1).
+> [prusa3d/Prusa-Firmware-Buddy](https://github.com/prusa3d/Prusa-Firmware-Buddy) (8.0.1).
 > "Prusa", "Original Prusa" and "CORE One" are trademarks of Prusa Research a.s., used here only to say
 > which printers the firmware is for.
 >
@@ -25,8 +25,8 @@
 >   - CORE One L, CORE One, MK4/S, MK3.9/S, MK3.5/S:
 >     [Flashing custom firmware](https://help.prusa3d.com/article/flashing-custom-firmware-core-one-l-core-one-mk4-s-mk3-9-s-mk3-5-s_814967) (seal on the xBuddy board, inside the electronics box)
 >   - XL: [Imposter! Fake signature #17606 (XL)](https://help.prusa3d.com/article/imposter-fake-signature-17606-xl_399880) (seal on the XLBuddy board)
-> - **No warranty from this project** (GPL v3.0). It has only been tested in a simulator on the MK4, never on
->   real hardware. Use it entirely at your own risk.
+> - **No warranty from this project** (GPL v3.0). Only some printers have been reported working on real
+>   hardware (see [Status](#status--状況)). Use it entirely at your own risk.
 > - **Do not contact Prusa Research support about this firmware.** Report problems in this repository's
 >   [Issues](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/issues), and flash official firmware
 >   again before asking Prusa for help.
@@ -35,7 +35,7 @@
 > ## ⚠️ 非公式ファームウェアです - インストール前に必ずお読みください
 >
 > **非公式のコミュニティ版です。Prusa Research による作成・テスト・承認・サポートは一切ありません。**
-> オープンソースの Prusa Firmware Buddy (6.10.1) をもとにした独立したフォークです。
+> オープンソースの Prusa Firmware Buddy (8.0.1) をもとにした独立したフォークです。
 > 「Prusa」「Original Prusa」「CORE One」は Prusa Research a.s. の商標で、対応機種を示すためにのみ使用しています。
 >
 > - **インストールにはメイン基板の「アペンディクス」(シール)を折る必要があります。** 出荷時のプリンタは Prusa が
@@ -44,7 +44,7 @@
 >   引き起こす損害 (火災など) について Prusa は一切責任を負いません。作業前に機種ごとの Prusa の記事を確認してください:
 >   - CORE One L、CORE One、MK4/S、MK3.9/S、MK3.5/S: [Flashing custom firmware](https://help.prusa3d.com/article/flashing-custom-firmware-core-one-l-core-one-mk4-s-mk3-9-s-mk3-5-s_814967)
 >   - XL: [Imposter! Fake signature #17606 (XL)](https://help.prusa3d.com/article/imposter-fake-signature-17606-xl_399880)
-> - **本プロジェクトは無保証です** (GPL v3.0)。MK4 のシミュレータでのみ動作確認しており、実機ではまだテストしていません。
+> - **本プロジェクトは無保証です** (GPL v3.0)。実機で動作報告があるのは一部の機種のみです ([状況](#status--状況)を参照)。
 >   すべて自己責任でご利用ください。
 > - **このファームウェアについて Prusa Research のサポートに問い合わせないでください。** 不具合は
 >   [Issues](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/issues) にご報告ください。
@@ -59,7 +59,7 @@ translation is rewritten in modern Japanese (設定の読み込みが完了し�
 
 ## 概要
 
-Prusa純正ファームウェア 6.10.1 をベースに、漢字・ひらがなで表示できるようにした非公式のコミュニティ版です。
+Prusa純正ファームウェア 8.0.1 をベースに、漢字・ひらがなで表示できるようにした非公式のコミュニティ版です。
 従来のカタカナのみの日本語訳を、すべて漢字かな交じりの日本語に翻訳し直しました。
 
 アペンディクスの折り方は、上記の機種ごとの Prusa の記事を参照してください。
@@ -69,17 +69,17 @@ Prusa純正ファームウェア 6.10.1 をベースに、漢字・ひらがな�
 ## Downloads / ダウンロード
 
 Firmware files are attached to the [releases](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/releases) of this
-repository, for example `COREONE_6.10.1-jp.1.bbf`. Pick the file for your printer; `SHA256SUMS.txt`
+repository, for example `COREONE_8.0.1-jp.1.bbf`. Pick the file for your printer; `SHA256SUMS.txt`
 lists the checksums.
 
 | Printer / プリンタ | File / ファイル |
 |---|---|
 | Original Prusa MK4, MK4S, MK3.9, MK3.9S | `MK4_<version>.bbf` |
 | Original Prusa MK3.5, MK3.5S | `MK3.5_<version>.bbf` |
-| Original Prusa XL | `XL_<version>.bbf` |
-| Prusa CORE One | `COREONE_<version>.bbf` |
-| Prusa CORE One L | `COREONEL_<version>.bbf` |
-| Prusa CORE One with INDX | `COREONE_INDX_<version>.bbf` |
+| Original Prusa XL, XL+ | `XL_<version>.bbf` |
+| Prusa CORE One, CORE One+ (Gen 2) | `COREONE_<version>.bbf` |
+| Prusa CORE One L, CORE One L+ | `COREONEL_<version>.bbf` |
+| Prusa CORE One, CORE One+ (Gen 2) with INDX | `COREONE_INDX_<version>.bbf` |
 | Prusa CORE One L with INDX | `COREONEL_INDX_<version>.bbf` |
 
 ## Original Prusa MINI / MINI+ is not supported / MINI・MINI+ は非対応
@@ -113,12 +113,13 @@ MINI では Prusa の公式ファームウェア (カタカナ表示) をその�
    It is near the end of the list, after Polski.
 
 To go back, flash an official firmware from [prusa3d.com](https://www.prusa3d.com/drivers/) the same way.
-The version shown on the printer ends with `-jp.N`, for example `6.10.1-jp.1`.
+The version shown on the printer ends with `-jp.N`, for example `8.0.1-jp.1`.
 
 ## Status / 状況
 
-- Tested in the MINI404 simulator on the MK4, and reported working on a real CORE One INDX. The other
-  builds compile, but have not run on real hardware yet - reports welcome.
+- The 6.10.1 based releases were tested in the MINI404 simulator on the MK4 and reported working on a real
+  CORE One INDX. The 8.0.1 based builds compile and pass the unit tests, but have not run on real hardware
+  yet - reports welcome.
 - The translation was drafted with AI assistance against a shared glossary and checked automatically
   (format strings, line structure, character set, width). Thanks to Mataro ([@mataro37](https://x.com/mataro37))
   for proofreading it on a CORE One INDX; a full review by native speakers is still welcome.
@@ -130,9 +131,9 @@ The version shown on the printer ends with `-jp.N`, for example `6.10.1-jp.1`.
 [Shinonome 16](http://openlab.ring.gr.jp/efont/shinonome/) (東雲フォント, public domain), a 16x16 bitmap font
 designed for Japanese. The build embeds only the characters the translation actually uses, stored as
 1 bit per pixel: 32 B of bitmap plus a 2 B index, 34 B per character. The full translation uses
-498 kanji and 673 full-width characters in total, about 23 KB.
+525 kanji and 664 full-width characters in total, about 23 KB.
 
-**Flash.** Everything fits in the printer's internal flash. The MK4 build is slightly *smaller* than stock,
+**Flash.** Everything fits in the printer's internal flash. Measured on 6.10.1, the MK4 build is slightly *smaller* than stock,
 because the fonts no longer need the half-width katakana:
 
 | MK4 build | Flash used |
@@ -173,11 +174,11 @@ maintainer. In order:
    kanji at their own 16 px width, made it 29 % narrower than English.
 6. **Built the release** for every 32-bit printer except the MINI, from the commits below.
 
-What this means for you: the code has been tested only in the simulator on the MK4, and the translation is
+What this means for you: the code has been tested in the simulator on the MK4 and on few real printers, and the translation is
 machine-made with human spot checks, not a professional or native-speaker translation. Please report anything
 wrong or unnatural in [Issues](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/issues).
 
-The changes are commits on top of upstream 6.10.1:
+The changes are commits merged with upstream 8.0.1:
 - `gui: Draw full-width Japanese characters` - font generation (`src/module/gui/font_data`), text layout
   (`src/common/str_utils.cpp`) and rendering (`src/guiapi`).
 - `lang: Translate Japanese with kanji` - `src/lang/po/ja/Prusa-Firmware-Buddy_ja.po`.

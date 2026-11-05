@@ -16,6 +16,7 @@
 #include <timing.h>
 #include <prusa3d/tool_offset_sensor/Data_1_0.h>
 #include <bsod/bsod.h>
+#include <utils/uncopyable.hpp>
 
 LOG_COMPONENT_REF(LDC1612)
 
@@ -28,33 +29,50 @@ extern tool_offset_sensor::cyphal::ToolOffsetSensorNode can_node;
 namespace {
 
 constexpr LDC1612::ChannelConfig default_ch_config {
-    .rcount = 8192,
+    // Conversion time = rcount * 16 / fREF = 3.28 ms (~305 SPS single channel,
+    // ~150 SPS per channel in dual-channel mode)
+    .rcount = 4096,
+    // Settle time = settlecount * 16 / fREF = 51.2 us; satisfies
+    // SETTLECOUNT >= Q * fREF / (16 * fSENSOR) for sensor Q up to ~350
+    // at fSENSOR ~= 6.9 MHz
     .settlecount = 64,
-    .fin_divider = 1,
-    .fref_divider = 1,
-    .drive_current = 30,
+    // fREF = 40 MHz CLKIN / 2 = 20 MHz: single-channel operation requires
+    // fREF <= 35 MHz. fIN = fSENSOR / 2 ~= 3.45 MHz keeps the fIN < fREF / 4
+    // requirement
+    .fin_divider = 2,
+    .fref_divider = 2,
+    // Drive current, chosen from IDRIVE sweeps over ten sensor boards
+    // noise is lowest at 25
+    .drive_current = 25,
     .offset = 0
 };
 
 constexpr LDC1612::DeviceConfig device_config {
     .sleep_mode = false,
     .use_external_clock = true,
-    .rp_override_en = false,
-    .auto_amp_dis = false,
+    // Drive current with amplitude correction disabled is the
+    // datasheet-recommended configuration for precision measurement
+    .rp_override_en = true,
+    .low_power_activation = false,
+    .auto_amp_dis = true,
     .mux_config = {
         .deglitch = LDC1612::DeglitchFilter::MHz_10 },
     .error_config = {
         .report_underrange = true,
         .report_overrange = true,
         .report_watchdog = true,
-        .report_amplitude_high = false,
-        .report_amplitude_low = false,
+        .report_amplitude_high = true,
+        // ERR_AE in DATAx_MSB is ignored, the AEL bit is set and expected, the sensor is operational anyway
+        .report_amplitude_low = true,
         .int_on_underrange = false,
         .int_on_overrange = false,
         .int_on_watchdog = false,
         .int_on_amplitude_high = false,
         .int_on_amplitude_low = false,
-        .int_on_zero_count = false,
+        // Zero count set = a conversion counted no sensor cycles, i.e. the
+        // oscillation stopped, it has no DATAx_MSB reporting bit, so STATUS is
+        // the only way to observe it.
+        .int_on_zero_count = true,
         .int_on_data_ready = true,
     },
     .ch0 = default_ch_config,
@@ -165,8 +183,12 @@ void clear_data_ready_semaphore() {
     }
 }
 
-bool has_pending_data(const LDC1612::Status &status, bool ch0, bool ch1) {
-    return (ch0 && status.unread_conv_ch0) || (ch1 && status.unread_conv_ch1);
+bool has_valid_pending_data(const LDC1612::Status &status, bool ch0, bool ch1) {
+    // Each enabled channel must have unread conversion data ready
+    // Otherwise it is considered an error, one channel is not working properly
+    return (ch0 || ch1)
+        && (!ch0 || status.unread_conv_ch0)
+        && (!ch1 || status.unread_conv_ch1);
 }
 
 struct ChannelState {
@@ -210,125 +232,155 @@ struct ChannelState {
     }
 };
 
-} // namespace
-
 using SensorState = tool_offset_sensor::cyphal::ToolOffsetSensorNode::SensorState;
 
-static void main_task_code(void *) {
-    LDC1612 ldc;
-    ChannelState ch0_state(publish_ch0);
-    ChannelState ch1_state(publish_ch1);
+class SensorTask : Uncopyable {
+public:
+    [[noreturn]] void run();
 
-    bool ldc_powered = false;
-    bool prev_ch0 = false;
-    bool prev_ch1 = false;
+private:
+    void ensure_sensor_off_and_idle(bool publish_state);
+    bool configure_sensor(bool ch0, bool ch1);
+    bool read_data_from_sensor(bool ch0, bool ch1);
+
+    LDC1612 ldc;
+    ChannelState ch0_state { publish_ch0 };
+    ChannelState ch1_state { publish_ch1 };
+
+    static constexpr uint8_t max_consecutive_failures = 5;
     SensorState sensor_state;
+    uint8_t consecutive_failures = 0;
+};
+
+void SensorTask::ensure_sensor_off_and_idle(bool publish_state) {
+    if (!hal::ldc1612_is_enabled()) {
+        return;
+    }
+    ch0_state.flush_and_publish();
+    ch1_state.flush_and_publish();
+    hal::ldc1612_set_enabled(false);
+    clear_data_ready_semaphore();
+
+    if (publish_state) {
+        sensor_state = {};
+        can_node.set_sensor_state(sensor_state);
+    }
+}
+
+bool SensorTask::configure_sensor(bool ch0, bool ch1) {
+    ensure_sensor_off_and_idle(false);
+    freertos::delay(1);
+
+    if (!initialize_ldc(ldc, ch0, ch1)) {
+        hal::ldc1612_set_enabled(false);
+        sensor_state = {};
+        sensor_state.sensor_fault = true;
+        can_node.set_sensor_state(sensor_state);
+        freertos::delay(10);
+        return false;
+    }
+
+    ch0_state.reset();
+    ch1_state.reset();
+    clear_data_ready_semaphore();
+
+    sensor_state = {};
+    sensor_state.ch0_active = ch0;
+    sensor_state.ch1_active = ch1;
+    can_node.set_sensor_state(sensor_state);
+    return true;
+}
+
+bool SensorTask::read_data_from_sensor(bool ch0, bool ch1) {
+    const auto status = ldc.read_status();
+
+    if (!status.has_value()) {
+        // I2C read error
+        return false;
+    }
+
+    // Check for errors and report them
+    if (status->err_chan0 || status->err_chan1) {
+        sensor_state.sensor_errors |= status->error_flags;
+        can_node.set_sensor_state(sensor_state);
+        return false;
+    }
+    // Only then check if there is data ready to read
+    if (!has_valid_pending_data(*status, ch0, ch1)) {
+        return false;
+    }
+
+    uint32_t now_us = static_cast<uint32_t>(ticks_us());
+    if (ch0 && status->unread_conv_ch0) {
+        if (!ch0_state.read_and_publish(ldc, LDC1612::Channel::CH0, now_us)) {
+            return false;
+        }
+    }
+    if (ch1 && status->unread_conv_ch1) {
+        if (!ch1_state.read_and_publish(ldc, LDC1612::Channel::CH1, now_us)) {
+            return false;
+        }
+    }
+    // Successfully read and published data
+    // When neither channel is enabled, has_valid_pending_data will return false and this part is skipped
+    return true;
+}
+
+void SensorTask::run() {
+    tool_offset_sensor::cyphal::ToolOffsetSensorNode::ChannelConfig prev_cfg = {};
 
     while (true) {
-        auto cfg = can_node.get_config();
-        bool ch0 = cfg.ch0_enabled;
-        bool ch1 = cfg.ch1_enabled;
+        const auto cfg = can_node.get_config();
+        const bool ch0 = cfg.ch0_enabled;
+        const bool ch1 = cfg.ch1_enabled;
+        const bool config_changed = cfg != prev_cfg;
+        prev_cfg = cfg;
 
-        bool config_changed = (ch0 != prev_ch0) || (ch1 != prev_ch1);
-        prev_ch0 = ch0;
-        prev_ch1 = ch1;
-
-        static uint8_t consecutive_failures = 0;
-        if (consecutive_failures >= 5) {
+        if (consecutive_failures >= max_consecutive_failures) {
             log_error(LDC1612, "Too many consecutive failures, resetting board");
             freertos::delay(100); // delay to propagate message before reset
             hal::reset();
         }
 
-        // Nothing to do - ensure sensor is off and idle
         if (!ch0 && !ch1) {
-            if (ldc_powered) {
-                ch0_state.flush_and_publish();
-                ch1_state.flush_and_publish();
-                hal::ldc1612_set_enabled(false);
-                clear_data_ready_semaphore();
-                ldc_powered = false;
-
-                sensor_state = {};
-                can_node.set_sensor_state(sensor_state);
-            }
+            // No channels enabled, just clear state
+            ensure_sensor_off_and_idle(true);
             freertos::delay(10);
             consecutive_failures = 0;
             continue;
         }
 
         // (Re)configure the sensor when first powering on or config changed
-        if (!ldc_powered || config_changed) {
-            if (ldc_powered) {
-                ch0_state.flush_and_publish();
-                ch1_state.flush_and_publish();
-                hal::ldc1612_set_enabled(false);
-                clear_data_ready_semaphore();
-                freertos::delay(1);
-            }
-
-            if (!initialize_ldc(ldc, ch0, ch1)) {
+        if (!hal::ldc1612_is_enabled() || config_changed) {
+            if (!configure_sensor(ch0, ch1)) {
                 consecutive_failures++;
-                ldc_powered = false;
-                sensor_state = {};
-                sensor_state.sensor_fault = true;
-                can_node.set_sensor_state(sensor_state);
-                freertos::delay(10);
                 continue;
             }
-
-            ldc_powered = true;
-            ch0_state.reset();
-            ch1_state.reset();
-            clear_data_ready_semaphore();
-
-            sensor_state = {};
-            sensor_state.ch0_active = ch0;
-            sensor_state.ch1_active = ch1;
-            can_node.set_sensor_state(sensor_state);
         }
 
         // Prefer the DRDY interrupt, but recover by polling status in case
         // INTB stayed asserted and we missed the falling edge.
         if (!hal::ldc_data_ready.try_acquire_for(50)) {
-            const auto status = ldc.read_status();
-            if (!status.has_value() || !has_pending_data(*status, ch0, ch1)) {
-                consecutive_failures++;
-                continue;
-            }
+            // DRDY interrupt was not triggered within 50 ms, increment error counter
+            // and try to readout data, there is possible recovery
+            consecutive_failures++;
         }
 
-        while (true) {
-            const auto status = ldc.read_status();
-            if (!status.has_value() || !has_pending_data(*status, ch0, ch1)) {
-                consecutive_failures++;
-                break;
-            }
-
-            if (status->err_chan0 || status->err_chan1) {
-                sensor_state.sensor_errors |= status->error_flags;
-                can_node.set_sensor_state(sensor_state);
-                consecutive_failures++;
-            }
-
-            uint32_t now_us = static_cast<uint32_t>(ticks_us());
-
-            if (ch0 && status->unread_conv_ch0) {
-                if (ch0_state.read_and_publish(ldc, LDC1612::Channel::CH0, now_us)) {
-                    consecutive_failures = 0;
-                } else {
-                    consecutive_failures++;
-                }
-            }
-            if (ch1 && status->unread_conv_ch1) {
-                if (ch1_state.read_and_publish(ldc, LDC1612::Channel::CH1, now_us)) {
-                    consecutive_failures = 0;
-                } else {
-                    consecutive_failures++;
-                }
-            }
+        if (read_data_from_sensor(ch0, ch1)) {
+            consecutive_failures = 0;
+        } else {
+            consecutive_failures++;
         }
     }
+}
+
+// Static storage keeps the state out of the task stack and visible in the map file.
+SensorTask sensor_task;
+
+} // anonymous namespace
+
+static void main_task_code(void *param) {
+    static_cast<SensorTask *>(param)->run();
 }
 
 namespace {
@@ -402,7 +454,7 @@ extern "C" int main() {
         main_task_code,
         "main_task",
         main_task_stack_size,
-        nullptr,
+        &sensor_task,
         tskIDLE_PRIORITY + 1,
         main_task_stack,
         &main_task_control_block);

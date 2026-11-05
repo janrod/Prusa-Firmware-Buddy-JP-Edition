@@ -17,9 +17,7 @@ bool CalibrationPreamble::run() const {
     {
         // Make sure we have enough clearance above the bed
         on_step(Step::moving_away);
-
-        // Note: the number was chosen arbitrarily, in practice anything above 1 cm would possibly do
-        if (!park(ParkingPosition { .z = ParkingPosition::AtLeast { .absolute = 50 } })) {
+        if (!park(moving_away_position)) {
             return false;
         }
     }
@@ -30,7 +28,7 @@ bool CalibrationPreamble::run() const {
             return true;
         }
         on_step(Step::homing);
-        // z_raise=0: Z is already safely at the bottom from the move above
+        // z_raise=0: the bed is already lowered
         return GcodeSuite::G28_no_parser(true, true, false, { .z_raise = 0, .precise = level == AxisHomeLevel::full });
     };
 
@@ -53,7 +51,7 @@ bool CalibrationPreamble::run() const {
         }
 
         on_step(Step::picking_tool);
-        // Z is already safe at the bottom: skip the Z lift and don't return Z anywhere
+        // The bed is already lowered: skip the Z lift and don't return Z anywhere
         if (!prusa_toolchanger.pick_any_tool(tool_return_t::no_return, {}, tool_change_lift_t::no_lift, false)) {
             return false;
         }
@@ -72,7 +70,7 @@ bool CalibrationPreamble::run() const {
 
         on_step(Step::parking_tool);
         if (current_tool->is_enabled()) {
-            // Z is already safe at the bottom: skip the Z lift and don't return Z anywhere
+            // The bed is already lowered: skip the Z lift and don't return Z anywhere
             if (!prusa_toolchanger.tool_change(NoTool {}, tool_return_t::no_return, {}, tool_change_lift_t::no_lift, false)) {
                 return false;
             }

@@ -885,6 +885,12 @@ TEST_CASE("RectTextLayout: full-width characters", "[layout]") {
         REQUIRE(layout.has_text_overflown() == true);
     }
 
+    SECTION("Counts wrapped lines by the width of the characters") {
+        const auto text = string_view_utf8::MakeCPUFLASH("日本語設定");
+        REQUIRE(RectTextLayout::compute_line_count(text, 48, mixed_width) == 2);
+        REQUIRE(RectTextLayout::compute_line_count(text, 80, mixed_width) == 1);
+    }
+
     SECTION("Reports full-width characters") {
         StringReaderUtf8 latin_reader(string_view_utf8::MakeCPUFLASH("AB CD"));
         REQUIRE(RectTextLayout(latin_reader, 100, 1, is_multiline::no, mixed_width).has_full_width() == false);

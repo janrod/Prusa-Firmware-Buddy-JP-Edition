@@ -13,6 +13,7 @@
 #include <array>
 #include <stdio.h>
 #include <dirent.h>
+#include <common/filename.hpp>
 #include <common/filename_type.hpp>
 #include <common/directory.hpp>
 #include <strings.h>
@@ -52,9 +53,6 @@ public:
         }
     };
 
-    // This has to be larger than standard SFN's 11, because SFN in this form gets pseudo-encoded into UTF-8, so the size can bloat.
-    // As a result, filenames with diacritics wouldn't fit
-    static constexpr size_t MAX_SFN = 24;
     struct EntryRef;
     struct Entry {
 
@@ -71,8 +69,7 @@ public:
     public:
         uint64_t time = 0;
         EntryType type = EntryType::INVALID;
-        char lfn[filename_defs::max_filename_length] = { 0 };
-        char sfn[FileSort::MAX_SFN] = { 0 }; // cache the short filenames too, since they will be used in communication with Marlin
+        Filename name;
     };
 
     struct EntryRef {
@@ -80,7 +77,7 @@ public:
     public:
         EntryRef() = default;
         EntryRef(const Entry &e);
-        EntryRef(const dirent &de, const char *sfnPath);
+        EntryRef(const dirent &de, const char *canonical_path);
 
     public:
         inline bool is_valid() const {
@@ -89,8 +86,8 @@ public:
 
     public:
         uint64_t time = 0;
-        StringViewLight lfn = nullptr;
-        const char *sfn = nullptr;
+        StringViewLight display = nullptr;
+        const char *canonical = nullptr;
         EntryType type = EntryType::INVALID;
     };
 
@@ -104,7 +101,7 @@ public:
         debug_assert(a.is_valid() && b.is_valid());
 
         // Using std::tie to avoid errors in comparison of a heterogenous sequence of components
-        return std::tie(a.type, a.lfn) < std::tie(b.type, b.lfn);
+        return std::tie(a.type, a.display) < std::tie(b.type, b.display);
     }
 
     // This may look confusing - from the sorting perspective, the higher time stamp (the more recent one)
@@ -117,7 +114,7 @@ public:
         debug_assert(a.is_valid() && b.is_valid());
 
         // Using std::tie to avoid errors in comparison of a heterogenous sequence of components
-        return std::tie(a.type, b.time, b.lfn) < std::tie(b.type, a.time, a.lfn);
+        return std::tie(a.type, b.time, b.display) < std::tie(b.type, a.time, a.display);
     }
 
     static inline constexpr LessFunc sort_policy_less[std::to_underlying(SortPolicy::_COUNT)] = {

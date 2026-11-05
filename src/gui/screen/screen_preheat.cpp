@@ -14,6 +14,8 @@
 #include <bsod/bsod.h>
 #include <client_response_texts.hpp>
 #include <feature/compatibility_checks/filament_compatibility.hpp>
+#include <gui/standard_frame/frame_wait.hpp>
+#include <filament_to_load.hpp>
 
 #if HAS_ANFC()
     #include <feature/openprinttag/tool_tag.hpp>
@@ -23,6 +25,22 @@
 #endif
 
 namespace {
+
+[[nodiscard]] bool should_ask_for_filament_color(PreheatMode mode) {
+    switch (mode) {
+    case PreheatMode::preheat:
+    case PreheatMode::unload:
+    case PreheatMode::purge:
+        return false;
+
+    case PreheatMode::standard_load:
+    case PreheatMode::change_load:
+    case PreheatMode::autoload:
+        return config_store().should_load_ask_for_filament_color();
+    }
+
+    bsod_unreachable();
+}
 
 using PreheatToolIndex = PreheatData::ToolIndex;
 
@@ -261,6 +279,9 @@ void WindowMenuPreheat::setup_item(ItemVariant &variant, int index) {
             FilamentType { PendingAdHocFilamentType {} }.modify_parameters([](FilamentTypeParameters &p) {
                 // Clear OPT link that might have been left over in the data
                 p.openprinttag_uid_hash = buddy::openprinttag::ToolTag::no_tag_hash;
+                p.package_uuid = std::nullopt;
+                p.material_uuid = std::nullopt;
+                p.instance_uuid = std::nullopt;
             });
 #endif
 
@@ -315,13 +336,14 @@ static_assert(common_frames::is_update_callable<FrameFilamentSelection>);
 // Note: we need the window_t so that we can hook to the loop event
 class FrameAskLoadOpenPrintTag : public buddy::openprinttag::FrameOPTPrompt {
 
+    static constexpr auto phase = PhasesPreheat::ask_load_openprinttag;
+    static constexpr auto &responses = ClientResponses::preheat_responses[phase];
+
 public:
     FrameAskLoadOpenPrintTag(window_frame_t *parent)
         : FrameOPTPrompt(parent, _("Load from OpenPrintTag?")) {
 
-        setup_radio(ClientResponses::get_available_responses(PhasesPreheat::ask_load_openprinttag), [](Response r) {
-            marlin_client::FSM_response(PhasesPreheat::ask_load_openprinttag, r);
-        });
+        radio().set_fsm_and_phase(phase);
     }
 
     void update(const fsm::PhaseData &data) {
@@ -329,11 +351,18 @@ public:
 
         const auto tool = stdext::get_optional<VirtualToolIndex>(d.tool);
         if (!tool) {
+            on_error();
             return;
         }
 
         const auto tag = buddy::openprinttag::ToolTag::for_tool_ephemeral(*tool);
-        setup_tag(tag, [] {});
+        setup_tag(tag, [this] { on_error(); });
+    }
+
+    void on_error() {
+        static constexpr Response error_response = Response::No;
+        static_assert(std::ranges::contains(responses, error_response));
+        marlin_client::FSM_response(phase, error_response);
     }
 };
 static_assert(common_frames::is_update_callable<FrameAskLoadOpenPrintTag>);
@@ -360,6 +389,7 @@ static_assert(common_frames::is_update_callable<FrameOPTParameters>);
 using Frames
     = FrameDefinitionList<ScreenPreheat::FrameStorage,
 #if HAS_ANFC()
+        FrameDefinition<Phase::loading_openprinttag, FrameWait, N_("Loading OpenPrintTag...")>,
         FrameDefinition<Phase::ask_load_openprinttag, FrameAskLoadOpenPrintTag>,
         FrameDefinition<Phase::openprinttag_parameters, FrameOPTParameters>,
 #endif
@@ -387,6 +417,24 @@ bool ScreenPreheat::handle_filament_selection(FilamentType filament_type, Prehea
     compat.generate_noclear(compat_args);
     if (!compat.gui_confirm_all_incompatibilities(Response::Cancel)) {
         return false;
+    }
+
+    if (should_ask_for_filament_color(mode)
+        // Don't ask for adhoc filaments - for those it should already be prefilled
+        && !filament_type.is_adhoc()
+        // Impossible to adhocise mutliple tools at once
+        && std::holds_alternative<VirtualToolIndex>(tool)
+        //
+    ) {
+        const auto virtual_tool = std::get<VirtualToolIndex>(tool);
+
+        const auto color_opt = MenuItemColor::color_prompt_dialog(_("FILAMENT COLOR"), OptionalColor { std::nullopt });
+        if (!color_opt.has_value()) {
+            // User cancelled the color selection
+            return false;
+        }
+
+        filament_type = filament::apply_load_color(filament_type, virtual_tool, *color_opt);
     }
 
     marlin_client::FSM_response_variant(PhasesPreheat::user_temp_selection, FSMResponseVariant::make<FilamentType>(filament_type));

@@ -1,10 +1,14 @@
 target_include_directories(firmware PRIVATE . include)
 
-target_link_libraries(firmware PRIVATE buddy_utils bsod random random_sw fanctl)
+target_link_libraries(firmware PRIVATE buddy_utils bsod random random_sw fanctl uuid)
 
 # Provides the FreeRTOS tick/idle hooks. Must be built wherever cpu_utils.cpp is (every board that
 # enters this directory), as the hooks dispatch into it.
 target_sources(firmware PRIVATE application_hooks.cpp)
+
+# Banned symbols produce link time error.
+target_sources(firmware PRIVATE banned_symbols.cpp)
+target_link_options(firmware PRIVATE -Wl,--fatal-warnings)
 
 if(BOARD IN_LIST BUDDY_BOARDS)
   target_sources(
@@ -118,7 +122,6 @@ elseif(BOARD STREQUAL "DWARF")
     PRIVATE adc.cpp
             heap.cpp
             marlin_log_component.cpp
-            otp.cpp
             Pin.cpp
             random_sw.cpp
             safe_state.cpp
@@ -127,7 +130,7 @@ elseif(BOARD STREQUAL "DWARF")
   target_link_libraries(firmware PRIVATE logging)
 
 elseif(BOARD STREQUAL "MODULARBED")
-  target_sources(firmware PRIVATE heap.cpp otp.cpp)
+  target_sources(firmware PRIVATE heap.cpp)
   target_link_libraries(firmware PRIVATE logging)
 elseif(BOARD STREQUAL "XL_DEV_KIT_XLB")
   target_sources(

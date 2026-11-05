@@ -142,14 +142,7 @@ endif()
 
 if(HAS_MMU2)
   target_sources(
-    firmware
-    PRIVATE MItem_mmu.cpp
-            screen_menu_filament_changeall.cpp
-            screen_menu_filament_mmu.cpp
-            screen_menu_mmu_cut_filament.cpp
-            screen_menu_mmu_eject_filament.cpp
-            screen_menu_mmu_load_test_filament.cpp
-            screen_menu_mmu_load_to_nozzle.cpp
+    firmware PRIVATE MItem_mmu.cpp screen_menu_filament_changeall.cpp screen_menu_filament_mmu.cpp
     )
 endif()
 
@@ -167,6 +160,10 @@ elseif(BOARD IN_LIST BOARDS_WITH_ILI9488)
   target_sources(
     firmware PRIVATE display_hw_checks_xlcd.cpp screen_menu_board_info.cpp version_info_ILI9488.cpp
     )
+endif()
+
+if(HAS_CYPHAL)
+  target_sources(firmware PRIVATE screen_menu_cyphal_info.cpp)
 endif()
 
 if(XL_ENCLOSURE_SUPPORT)

@@ -1,13 +1,11 @@
 #pragma once
 
-#include <meta_utils.hpp>
-
 #include <i_window_menu_item.hpp>
-#include <WindowMenuItems.hpp>
-#include <screen_menu.hpp>
 #include <tool_index.hpp>
+#include <gui_utils.hpp>
+#include <filament.hpp>
 
-class MI_LOADED_FILAMENT : public IWindowMenuItem {
+class MI_LOADED_FILAMENT final : public IWindowMenuItem {
 
 public:
     enum class DisplayFormat {
@@ -20,29 +18,19 @@ public:
     };
 
 public:
-    MI_LOADED_FILAMENT(DisplayFormat display_format = DisplayFormat::auto_submenu, uint8_t tool = 0);
+    MI_LOADED_FILAMENT(DisplayFormat display_format = DisplayFormat::auto_submenu, VirtualToolIndex tool = VirtualToolIndex::from_raw(0));
 
 protected:
     virtual void click(IWindowMenu &) override;
     virtual void Loop() override;
+    void printExtension(Rect16 extension_rect, Color color_text, Color color_back, ropfn raster_op) const override;
 
 private:
-    std::array<char, 48> label_buffer_;
+    std::array<char, 32> info_buffer_;
+    StringViewUtf8Parameters<4> label_params_;
+    MenuItemColorSwatchExtension extension_;
     VirtualToolIndex tool_;
     FilamentType filament_type_;
     DisplayFormat display_format_ : 2;
     bool should_open_submenu_ : 1;
-};
-
-template <typename>
-struct ScreenLoadedFilaments_ {};
-
-template <size_t... i>
-struct ScreenLoadedFilaments_<std::index_sequence<i...>> {
-    using T = ScreenMenu<GuiDefaults::MenuFooter, MI_RETURN, WithConstructorArgs<MI_LOADED_FILAMENT, MI_LOADED_FILAMENT::DisplayFormat::slot_number, i>...>;
-};
-
-class ScreenLoadedFilaments : public ScreenLoadedFilaments_<std::make_index_sequence<VirtualToolIndex::count>>::T {
-public:
-    ScreenLoadedFilaments();
 };
