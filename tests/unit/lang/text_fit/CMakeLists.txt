@@ -94,6 +94,7 @@ add_catch_test(text_fit_tests_mini)
 add_executable(
   text_fit_tests_large
   ${CMAKE_CURRENT_SOURCE_DIR}/large_display_tests.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/layout_width_tests.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/text_fit_test.cpp
   ${CMAKE_SOURCE_DIR}/src/common/str_utils.cpp
   ${CMAKE_SOURCE_DIR}/src/common/utils/string_builder.cpp
