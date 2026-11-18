@@ -12,7 +12,7 @@
 >
 > **This is unofficial community firmware. It is not made, tested, endorsed or supported by Prusa Research.**
 > It is an independent fork of the open-source
-> [prusa3d/Prusa-Firmware-Buddy](https://github.com/prusa3d/Prusa-Firmware-Buddy) (8.0.1).
+> [prusa3d/Prusa-Firmware-Buddy](https://github.com/prusa3d/Prusa-Firmware-Buddy) (8.0.2).
 > "Prusa", "Original Prusa" and "CORE One" are trademarks of Prusa Research a.s., used here only to say
 > which printers the firmware is for.
 >
@@ -35,7 +35,7 @@
 > ## ⚠️ 非公式ファームウェアです - インストール前に必ずお読みください
 >
 > **非公式のコミュニティ版です。Prusa Research による作成・テスト・承認・サポートは一切ありません。**
-> オープンソースの Prusa Firmware Buddy (8.0.1) をもとにした独立したフォークです。
+> オープンソースの Prusa Firmware Buddy (8.0.2) をもとにした独立したフォークです。
 > 「Prusa」「Original Prusa」「CORE One」は Prusa Research a.s. の商標で、対応機種を示すためにのみ使用しています。
 >
 > - **インストールにはメイン基板の「アペンディクス」(シール)を折る必要があります。** 出荷時のプリンタは Prusa が
@@ -59,7 +59,7 @@ translation is rewritten in modern Japanese (設定の読み込みが完了し�
 
 ## 概要
 
-Prusa純正ファームウェア 8.0.1 をベースに、漢字・ひらがなで表示できるようにした非公式のコミュニティ版です。
+Prusa純正ファームウェア 8.0.2 をベースに、漢字・ひらがなで表示できるようにした非公式のコミュニティ版です。
 従来のカタカナのみの日本語訳を、すべて漢字かな交じりの日本語に翻訳し直しました。
 
 アペンディクスの折り方は、上記の機種ごとの Prusa の記事を参照してください。
@@ -69,7 +69,7 @@ Prusa純正ファームウェア 8.0.1 をベースに、漢字・ひらがな�
 ## Downloads / ダウンロード
 
 Firmware files are attached to the [releases](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/releases) of this
-repository, for example `COREONE_8.0.1-jp.1.bbf`. Pick the file for your printer; `SHA256SUMS.txt`
+repository, for example `COREONE_8.0.2-jp.1.bbf`. Pick the file for your printer; `SHA256SUMS.txt`
 lists the checksums.
 
 | Printer / プリンタ | File / ファイル |
@@ -113,12 +113,12 @@ MINI では Prusa の公式ファームウェア (カタカナ表示) をその�
    It is near the end of the list, after Polski.
 
 To go back, flash an official firmware from [prusa3d.com](https://www.prusa3d.com/drivers/) the same way.
-The version shown on the printer ends with `-jp.N`, for example `8.0.1-jp.1`.
+The version shown on the printer ends with `-jp.N`, for example `8.0.2-jp.1`.
 
 ## Status / 状況
 
 - The 6.10.1 based releases were tested in the MINI404 simulator on the MK4 and reported working on a real
-  CORE One INDX. The 8.0.1 based builds compile and pass the unit tests, but have not run on real hardware
+  CORE One INDX. The 8.0.x based builds compile and pass the unit tests, but have not run on real hardware
   yet - reports welcome.
 - The translation was drafted with AI assistance against a shared glossary and checked automatically
   (format strings, line structure, character set, width). Thanks to Mataro ([@mataro37](https://x.com/mataro37))
@@ -178,7 +178,7 @@ What this means for you: the code has been tested in the simulator on the MK4 an
 machine-made with human spot checks, not a professional or native-speaker translation. Please report anything
 wrong or unnatural in [Issues](https://github.com/janrod/Prusa-Firmware-Buddy-JP-Edition/issues).
 
-The changes are commits merged with upstream 8.0.1:
+The changes are commits merged with upstream 8.0.2:
 - `gui: Draw full-width Japanese characters` - font generation (`src/module/gui/font_data`), text layout
   (`src/common/str_utils.cpp`) and rendering (`src/guiapi`).
 - `lang: Translate Japanese with kanji` - `src/lang/po/ja/Prusa-Firmware-Buddy_ja.po`.
