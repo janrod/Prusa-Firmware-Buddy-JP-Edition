@@ -12,6 +12,8 @@
 #include <utils/string_builder.hpp>
 #include <str_utils.hpp>
 
+#include <cstring>
+
 struct TextLayout {
     Rect16 title_rect;
     Rect16 desc_rect;
@@ -48,18 +50,21 @@ const FILETranslationProvider uk("MO/uk.mo");
 ProviderRegistrator ukReg("uk", &uk);
 } // namespace
 
-void test_error(const ErrorEntry &error) {
+void test_error(const ErrorEntry &error, const char *only_lang) {
     auto *layout = &layouts[error.layout];
 
     auto *fnt_title = resource_font(layout->title_font);
     auto *fnt_desc = resource_font(layout->desc_font);
 
     for (const auto lang : lang_codes) {
+        if (only_lang && strcmp(lang, only_lang) != 0) {
+            continue;
+        }
         Translations::Instance().ChangeLanguage(Translations::MakeLangCode(lang));
 
         const string_view_utf8 title_str = Translations::Instance().CurrentProvider()->GetText(error.title);
         StringReaderUtf8 title_reader(title_str);
-        const auto title_layout = RectTextLayout(title_reader, layout->title_rect.Width() / fnt_title->w, layout->title_rect.Height() / fnt_title->h, is_multiline::no);
+        const auto title_layout = RectTextLayout(title_reader, layout->title_rect.Width(), layout->title_rect.Height() / fnt_title->h, is_multiline::no, char_width(fnt_title));
 
         {
             INFO("Title");
@@ -70,14 +75,14 @@ void test_error(const ErrorEntry &error) {
             str_build.append_string_view(title_str);
             INFO("Translated Text = "
                 << "\"" << str_build.str() << "\"\n");
-            INFO("Max chars per line = " << layout->title_rect.Width() / fnt_title->w << "; Chars in text = " << title_str.computeNumUtf8Chars());
+            INFO("Max width = " << layout->title_rect.Width() << " px; Text width = " << title_layout.get_width() << " px");
 
             CHECK(!title_layout.has_text_overflown());
         }
 
         const string_view_utf8 desc_str = Translations::Instance().CurrentProvider()->GetText(error.text);
         StringReaderUtf8 desc_reader(desc_str);
-        const auto desc_layout = RectTextLayout(desc_reader, layout->desc_rect.Width() / fnt_desc->w, layout->desc_rect.Height() / fnt_desc->h, is_multiline::yes);
+        const auto desc_layout = RectTextLayout(desc_reader, layout->desc_rect.Width(), layout->desc_rect.Height() / fnt_desc->h, is_multiline::yes, char_width(fnt_desc));
 
         {
             INFO("Description");
@@ -88,7 +93,7 @@ void test_error(const ErrorEntry &error) {
             str_build.append_string_view(desc_str);
             INFO("Translated Text = "
                 << "\"" << str_build.str() << "\"\n");
-            INFO("Max chars per line = " << layout->desc_rect.Width() / fnt_desc->w);
+            INFO("Max width = " << layout->desc_rect.Width() << " px");
             INFO("How may rows can fit in the rectangle: " << layout->desc_rect.Height() / fnt_desc->h);
             INFO("Hint: It's too many rows or single word is longer than one row");
 

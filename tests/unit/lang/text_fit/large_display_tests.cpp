@@ -11,3 +11,13 @@ TEST_CASE("Error yaml text fit [LARGE display]", "[!mayfail]") {
         test_error(error);
     }
 }
+
+// The JP Edition owns the Japanese translation, so its texts must fit
+TEST_CASE("Japanese error yaml text fit [LARGE display]") {
+    for (auto &error : error_list) {
+        if (error.display == DisplayOption::mini) {
+            continue;
+        }
+        test_error(error, "ja");
+    }
+}
