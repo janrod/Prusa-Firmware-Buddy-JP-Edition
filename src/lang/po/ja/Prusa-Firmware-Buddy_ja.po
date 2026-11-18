@@ -443,7 +443,7 @@ msgid ""
 msgstr ""
 "本当に印刷を中止しますか?\n"
 "\n"
-"現在の印刷はキャンセルされ、最初からやり直す必要があります。"
+"現在の印刷は中止され、最初からやり直す必要があります。"
 
 #: src/gui/screen_menu_e2ee.cpp:34
 msgid ""
@@ -2025,7 +2025,7 @@ msgstr "空"
 
 #: src/gui/MItem_tools.hpp:103 tmp_error_headers/error_list.hpp:1674
 msgid "Empty Nozzle Cleaner"
-msgstr "ノズルクリーナを空にする"
+msgstr "ノズルクリーナーを空にする"
 
 #: tmp_error_headers/error_list.hpp:1675
 msgid "Empty the nozzle cleaner, then press Done."
@@ -2399,7 +2399,7 @@ msgstr "失敗"
 msgid ""
 "Failed to calibrate homing. Continuing can cause layer shifts after rehoming"
 " and toolchange issues."
-msgstr "原点復帰の校正に失敗しました。続行すると、再原点復帰後の層ずれやツールチェンジの問題が発生するおそれがあります。"
+msgstr "原点復帰の校正に失敗しました。続行すると、再原点復帰後の層ずれやツール交換の問題が発生するおそれがあります。"
 
 #: tmp_error_headers/error_list.hpp:16
 msgid ""
@@ -2782,7 +2782,7 @@ msgstr "ファイルに印刷命令が含まれていません"
 
 #: tmp_error_headers/error_list.hpp:1331 tmp_error_headers/error_list.hpp:1332
 msgid "File error"
-msgstr "ファイル異常"
+msgstr "ファイルエラー"
 
 #: src/common/gcode/gcode_reader_interface.cpp:151
 msgid "File read error"
@@ -6002,7 +6002,7 @@ msgstr "校正メニューからドック位置校正を実行してください
 msgid ""
 "Please run homing calibration from the Calibrations menu. Continuing can "
 "result in homing shifts and toolcrashes."
-msgstr "校正メニューから原点校正を実行してください。続行すると原点ずれやツールの衝突が発生する恐れがあります。"
+msgstr "校正メニューから原点復帰校正を実行してください。続行すると原点ずれやツールの衝突が発生する恐れがあります。"
 
 #: src/gui/standard_frame/frame_wait.cpp:13 src/gui/screen_cold_pull.cpp:163
 msgid "Please wait"
@@ -6275,7 +6275,7 @@ msgstr "プリンタツール (%i)"
 
 #: src/gui/screen/screen_printer_type_changed.cpp:101
 msgid "Printer type changed"
-msgstr "プリンタ型式が変更されました"
+msgstr "プリンタ種別が変更されました"
 
 #: src/gui/MItem_menus.cpp:218
 msgid "Printhead"
@@ -7397,7 +7397,7 @@ msgstr "TMCドライバーエラー"
 #: tmp_error_headers/error_list_mmu.hpp:164
 #: tmp_error_headers/error_list_mmu.hpp:171
 msgid "TMC DRIVER RESET"
-msgstr "TMCドライバリセット"
+msgstr "TMCドライバーリセット"
 
 #: tmp_error_headers/error_list_mmu.hpp:199
 #: tmp_error_headers/error_list_mmu.hpp:206
@@ -7520,7 +7520,7 @@ msgstr "ツール選択"
 
 #: tmp_error_headers/error_list.hpp:239
 msgid "TOOLCHANGER ERROR"
-msgstr "ツールチェンジャ異常"
+msgstr "ツールチェンジャーエラー"
 
 #: src/gui/screen/toolhead/screen_toolhead_settings.cpp:304
 msgid "TOOLHEAD"
