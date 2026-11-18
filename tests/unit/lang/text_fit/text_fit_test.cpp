@@ -48,13 +48,34 @@ const FILETranslationProvider pl("MO/pl.mo");
 ProviderRegistrator plReg("pl", &pl);
 const FILETranslationProvider uk("MO/uk.mo");
 ProviderRegistrator ukReg("uk", &uk);
+
+/// Font of the display under test. The unit tests are configured for one printer, so
+/// resource_font() can return the fonts of the other display, which lack the full-width
+/// glyphs of the large one.
+const font_t *display_font(Font font) {
+#if HAS_MINI_DISPLAY()
+    return resource_font(font);
+#else
+    switch (font) {
+    case Font::small:
+    case Font::special:
+        return &font_data::regular_9x16_full;
+    case Font::normal:
+        return &font_data::bold_11x19_full;
+    case Font::big:
+        return &font_data::bold_13x22_full;
+    default:
+        return resource_font(font);
+    }
+#endif
+}
 } // namespace
 
 void test_error(const ErrorEntry &error, const char *only_lang) {
     auto *layout = &layouts[error.layout];
 
-    auto *fnt_title = resource_font(layout->title_font);
-    auto *fnt_desc = resource_font(layout->desc_font);
+    auto *fnt_title = display_font(layout->title_font);
+    auto *fnt_desc = display_font(layout->desc_font);
 
     for (const auto lang : lang_codes) {
         if (only_lang && strcmp(lang, only_lang) != 0) {
