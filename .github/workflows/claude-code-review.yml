@@ -37,7 +37,7 @@ jobs:
 
             Follow the review instructions and coding conventions in .claude/CLAUDE.md and
             doc/contributing.md: review commit by commit, and do not report whitespace or formatting.
-            Skip generated or vendored data, such as bitmap font files (*.bdf); for translation
+            Skip generated or vendored data, such as font source images (*.png); for translation
             files (*.po), check format specifiers and structure rather than reading every string.
             Be constructive and helpful in your feedback.
 

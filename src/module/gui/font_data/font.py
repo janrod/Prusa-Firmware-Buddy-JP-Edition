@@ -35,6 +35,12 @@ CYRILLIC = ([0x0404, 0x0406, 0x0407] + list(range(0x0410, 0x042A)) + [0x042C] +
 # separate 16x16 source font, 1 bit per pixel.
 WIDE_SIZE = 16
 
+# The full-width source png is the JIS X 0208 code chart: each row of the chart is a row
+# of the png, 94 cells wide. It holds the rows up to the end of the level 1 kanji.
+WIDE_PNG = '16x16px_*_jis.png'
+JIS_CELLS = 94
+JIS_ROWS = 47
+
 
 # The text layout's is_full_width() (src/common/str_utils.cpp) has to use the same ranges
 def is_wide(ch: str):
@@ -318,25 +324,53 @@ def emit_character_set(out, name: str, chars):
     out.write(f'static_assert(std::ranges::is_sorted({name}_set));\n\n')
 
 
-def load_wide_glyphs(bdf_path: Path):
-    """Bitmaps of the JIS X 0208 BDF font, 16 rows of 2 bytes each, by character."""
+def jis_position(char: str):
+    """Where a full-width character sits in the JIS X 0208 chart, as (cell, row) counted
+    from 0, or None when the source png does not hold it."""
+    try:
+        code = char.encode('euc_jp')
+    except UnicodeEncodeError:
+        return None
+    # Two bytes from 0xA1 up are JIS X 0208, the rest is half-width katakana and JIS X 0212
+    if len(code) != 2 or code[0] < 0xA1 or code[1] < 0xA1:
+        return None
+    row, cell = code[0] - 0xA1, code[1] - 0xA1
+    return (cell, row) if row < JIS_ROWS else None
+
+
+def load_wide_glyphs(png: Image.Image, chars):
+    """Bitmaps of the characters out of the full-width source png, 16 rows of 2 bytes
+    each, the most significant bit leftmost. None for the characters it does not hold."""
+    pixels = png.convert('L').load()
     glyphs = {}
-    lines = iter(bdf_path.read_text(encoding='ascii').splitlines())
-    for line in lines:
-        if line.startswith('ENCODING '):
-            jis = int(line.split()[1])
-            char = bytes((jis >> 8 | 0x80, jis & 0xFF | 0x80)).decode('euc_jp')
-        elif line == 'BITMAP':
-            rows = [int(next(lines), 16) for _ in range(WIDE_SIZE)]
-            glyphs[char] = b''.join(row.to_bytes(2, 'big') for row in rows)
+    for char in chars:
+        position = jis_position(char)
+        if position is None:
+            glyphs[char] = None
+            continue
+
+        cell, row = position
+        rows = []
+        for y in range(WIDE_SIZE):
+            bits = 0
+            for x in range(WIDE_SIZE):
+                if pixels[cell * WIDE_SIZE + x, row * WIDE_SIZE + y] < 128:
+                    bits |= 1 << (WIDE_SIZE - 1 - x)
+            rows.append(bits)
+        # An empty cell is a code the chart leaves unassigned, unless it is the
+        # ideographic space
+        if not any(rows) and char != '\u3000':
+            glyphs[char] = None
+            continue
+        glyphs[char] = b''.join(row.to_bytes(2, 'big') for row in rows)
     return glyphs
 
 
 def emit_wide_font(out, chars, glyphs):
-    unsupported = [ch for ch in chars if ch not in glyphs]
+    unsupported = [ch for ch in chars if glyphs[ch] is None]
     if unsupported:
         raise RuntimeError(
-            f'wide: no glyph for {"".join(unsupported)!r} in the source bdf')
+            f'wide: no glyph for {"".join(unsupported)!r} in the source png')
 
     emit_character_set(out, 'wide', chars)
     emit_array(out, 'constexpr uint8_t wide_bitmap[]',
@@ -359,16 +393,19 @@ def emit_font(out, font: Font, bitmap: bytes):
               f' {{ {font.charset}_set, {font.name}_bitmap, {wide} }};\n\n')
 
 
-def generate(out, po_dir: Path, png_dir: Path, wide_bdf: Path, sources: list):
+def generate(out, po_dir: Path, png_dir: Path, sources: list):
     """Write the font data, collecting what it was built out of into sources."""
     sets = character_sets(po_dir)
     sources.extend(po_path(po_dir, lang) for lang in LANGUAGES)
-    sources.append(wide_bdf)
+    wide_png = find_png(png_dir, WIDE_PNG)
+    sources.append(wide_png)
 
     out.write('namespace {\n\n')
     for name in sorted({font.charset for font in FONTS}):
         emit_character_set(out, name, sets[name])
-    emit_wide_font(out, wide_chars(po_dir), load_wide_glyphs(wide_bdf))
+    chars = wide_chars(po_dir)
+    with Image.open(wide_png) as png:
+        emit_wide_font(out, chars, load_wide_glyphs(png, chars))
     out.write(
         'constinit const WideFontData wide_data { wide_set, wide_bitmap };\n')
     out.write('} // namespace\n\n')
@@ -408,11 +445,6 @@ def main():
                         type=Path,
                         required=True,
                         help='directory holding the source pngs')
-    parser.add_argument(
-        '--wide-bdf',
-        type=Path,
-        required=True,
-        help='16x16 JIS X 0208 bdf font of the full-width characters')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--depfile',
                         type=Path,
@@ -422,7 +454,7 @@ def main():
     sources = []
     try:
         with open(args.output, 'w', encoding='utf-8') as out:
-            generate(out, args.po_dir, args.png_dir, args.wide_bdf, sources)
+            generate(out, args.po_dir, args.png_dir, sources)
     except RuntimeError as error:
         args.output.unlink(missing_ok=True)
         sys.exit(str(error))

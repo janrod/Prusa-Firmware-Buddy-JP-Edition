@@ -129,7 +129,8 @@ The version shown on the printer ends with `-jp.N`, for example `8.0.2-jp.1`.
 
 **Font.** Kana, kanji and Japanese punctuation come from
 [Shinonome 16](http://openlab.ring.gr.jp/efont/shinonome/) (東雲フォント, public domain), a 16x16 bitmap font
-designed for Japanese. The build embeds only the characters the translation actually uses, stored as
+designed for Japanese, stored like the other fonts as a source PNG: the JIS X 0208 chart up to the end of the
+level 1 kanji. The build embeds only the characters the translation actually uses, stored as
 1 bit per pixel: 32 B of bitmap plus a 2 B index, 34 B per character. The full translation uses
 525 kanji and 664 full-width characters in total, about 23 KB.
 
